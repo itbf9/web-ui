@@ -5,6 +5,8 @@
  * Comments use: https://tsdoc.org/
  */
 
+
+
 /**
  * Validate the file extension
  * Notes: This function is not in place but it could be usefule in the section of files
@@ -17,7 +19,7 @@
 
 export function validateFileExt(filename: string): boolean {
   const filext = filename.split('.').pop();
-  switch (filext.toLowerCase()){
+  switch (filext.toLowerCase()) {
     case 'zip':
     case 'dic':
     case 'txt':
@@ -36,8 +38,6 @@ export function validateFileExt(filename: string): boolean {
  * ```
  * @beta
  */
-
-
 export function getBase64ImageFromURL(url: string) {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -62,7 +62,8 @@ export function getBase64ImageFromURL(url: string) {
 
     img.src = url;
 
-  });}
+  });
+}
 
 
 
