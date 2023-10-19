@@ -1,0 +1,29 @@
+.agent-status-icon-wrapper {
+  display: inline-block;
+  width: 30px;
+  text-align: center;
+}
+
+.agent-status-icon {
+  cursor: pointer;
+  border: 1px dashed transparent;
+}
+
+.agent-status-icon:hover {
+  border: 1px dashed $color-grey-border;
+}
+
+.agent-status-link {
+  text-decoration: none;
+  color: $color-grey-dark;
+  cursor: pointer;
+}
+
+.agent-status-link:hover {
+  text-decoration: underline;
+}
+
+.agent-status-view-toggle-label {
+  cursor: pointer;
+  color: $color-grey-dark;
+}

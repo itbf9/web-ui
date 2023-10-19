@@ -7,17 +7,17 @@
 */
 
 input.ng-invalid.ng-touched {
-	border: 1.5px solid red;
+  border: 1.5px solid red;
 }
 
 .requiredak:before {
-  content:" *";
+  content: " *";
   color: red;
 }
 
 .form-input-custom {
-  padding-bottom:10px;
-  padding-right:10px;
+  padding-bottom: 10px;
+  padding-right: 10px;
   width: auto;
 }
 
@@ -46,141 +46,141 @@ input.ng-invalid.ng-touched {
 
 // move this element to layout
 .stepsContainer {
-  display:flex;
-  width:600px;
-  margin-left:auto;
-  margin-right:auto;
-  margin-bottom:20px;
+  display: flex;
+  width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 20px;
 }
 
 .stepConectorPiece {
-  height:3px;
-  background:lightgrey;
-  flex:1;
-  margin-top:19px;
+  height: 3px;
+  background: lightgrey;
+  flex: 1;
+  margin-top: 19px;
 }
 
 .stepCircle {
-  width:40px;
-  height:40px;
-  border-radius:100%;
-  background:lightgrey;
-  text-align:center;
-  line-height:40px;
-  color:#ffffff;
-  font-family:helvetica;
+  width: 40px;
+  height: 40px;
+  border-radius: 100%;
+  background: lightgrey;
+  text-align: center;
+  line-height: 40px;
+  color: #ffffff;
+  font-family: helvetica;
 }
 
 // move this element to layout
 .container-smart {
-  display:flex;
-  flex-direction:column;
+  display: flex;
+  flex-direction: column;
   // background:#f6f6f6;
-  width:300px;
-  margin-left:auto;
-  margin-right:auto;
+  width: 300px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .one,
 .two,
 .three {
-  flex:1;
-  padding:5px;
+  flex: 1;
+  padding: 5px;
 }
 
 .one {
-  padding-top:10px;
+  padding-top: 10px;
 }
 
 .three {
-  padding-bottom:10px;
+  padding-bottom: 10px;
 }
 
 .four {
-  flex:1;
-  position:relative;
-  height:40px;
+  flex: 1;
+  position: relative;
+  height: 40px;
 }
 
 .input {
-  width:90%;
-  display:block;
-  margin-left:auto;
-  margin-right:auto;
-  position:relative;
-  height:32px;
-  line-height:32px;
-  padding-left:10px;
+  width: 90%;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  position: relative;
+  height: 32px;
+  line-height: 32px;
+  padding-left: 10px;
 }
 
 .submit {
-  position:absolute;
-  right:14px;
-  background:darkblue;
-  color:#ffffff;
-  height:26px;
-  padding-left:10px;
-  padding-right:10px;
-  border:none;
-  font-size:10px;
-  font-weight:600;
-  text-transform:uppercase;
-  cursor:pointer;
+  position: absolute;
+  right: 14px;
+  background: darkblue;
+  color: #ffffff;
+  height: 26px;
+  padding-left: 10px;
+  padding-right: 10px;
+  border: none;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  cursor: pointer;
 }
 
 .thankYou {
-  text-align:center;
-  font-family:helvetica;
-  font-weight:800;
+  text-align: center;
+  font-family: helvetica;
+  font-weight: 800;
 }
 
 .customerContactContainer {
-  display:flex;
-  height:32px;
-  line-height:32px;
-  font-family:helvetica;
-  font-weight:600;
-  margin-top:20px;
-  width:300px;
-  margin-left:auto;
-  margin-right:auto;
+  display: flex;
+  height: 32px;
+  line-height: 32px;
+  font-family: helvetica;
+  font-weight: 600;
+  margin-top: 20px;
+  width: 300px;
+  margin-left: auto;
+  margin-right: auto;
 
 }
 
 .nameTitle {
-  width:100px;
-  background:#f6f6f6;
-  padding-left:10px;
-  font-size:12px;
+  width: 100px;
+  background: #f6f6f6;
+  padding-left: 10px;
+  font-size: 12px;
 }
 
 .emailTitle {
-  flex:1;
-  background:#f6f6f6;
-  padding-left:10px;
-  font-size:12px;
+  flex: 1;
+  background: #f6f6f6;
+  padding-left: 10px;
+  font-size: 12px;
 }
 
 .customerListItemsContainer {
-  display:flex;
-  height:32px;
-  border-bottom:1px solid #dddddd;
-  width:300px;
-  margin-left:auto;
-  margin-right:auto;
-  line-height:32px;
-  font-family:helvetica;
-  font-size:12px;
+  display: flex;
+  height: 32px;
+  border-bottom: 1px solid #dddddd;
+  width: 300px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 32px;
+  font-family: helvetica;
+  font-size: 12px;
 }
 
 .name {
-  width:100px;
-  padding-left:10px;
+  width: 100px;
+  padding-left: 10px;
 }
 
 .email {
-  flex:1;
-  padding-left:10px;
+  flex: 1;
+  padding-left: 10px;
 }
 
 /*
@@ -192,7 +192,7 @@ input.ng-invalid.ng-touched {
 */
 
 input.ng-invalid.ng-touched {
-	border: 1.5px solid red;
+  border: 1.5px solid red;
 }
 
 .form-control-mini {
@@ -220,7 +220,7 @@ input.ng-invalid.ng-touched {
   border-top: 2px solid white;
 }
 
-.style_selectize span{
+.style_selectize span {
   color: #000;
 }
 
@@ -244,7 +244,7 @@ input.ng-invalid.ng-touched {
 }
 
 .selectize-input::after {
-  visibility:hidden;
+  visibility: hidden;
 }
 
 /*
@@ -268,7 +268,7 @@ input.ng-invalid.ng-touched {
   margin: 0px 0;
 }
 
-.filedrop.active{
+.filedrop.active {
   border: 2px solid #fff;
 }
 
@@ -294,7 +294,7 @@ input.ng-invalid.ng-touched {
 .filedrop p {
   font-size: 12px;
   font-weight: 500;
-  color:rgb(143, 138, 138);
+  color: rgb(143, 138, 138);
   margin: 10px 0;
 }
 
@@ -306,7 +306,7 @@ input.ng-invalid.ng-touched {
   outline: none;
   border-radius: 5px;
   background: #4681f4;
-  color:#fff;
+  color: #fff;
   cursor: pointer;
 }
 
@@ -318,7 +318,7 @@ input.ng-invalid.ng-touched {
   outline: none;
   border-radius: 5px;
   background: #969595;
-  color:#fff;
+  color: #fff;
 }
 
 .filedrop .icon {
@@ -338,22 +338,22 @@ progress::-webkit-progress-value {
 /*
   05- Custom filter box
 */
-.filterboxglass{
-  border:none;
-  background:#e7eaed;
-  padding:7px;
+.filterboxglass {
+  border: none;
+  background: #e7eaed;
+  padding: 7px;
   // width:80%;
-  border-radius:9px;
-  color:black;
+  border-radius: 9px;
+  color: black;
 }
 
-#filterbox{
-  border:none;
-  background:#f3f5f7;
-  padding:7px;
-  width:80%;
+#filterbox {
+  border: none;
+  background: #f3f5f7;
+  padding: 7px;
+  width: 80%;
   border-radius: 0px 9px 9px 0px;
-  color:black;
+  color: black;
 }
 
 /*
@@ -364,13 +364,13 @@ progress::-webkit-progress-value {
   06- Password input field style and eye hidden/show
 */
 
-.input-icon-container{
+.input-icon-container {
   display: flex;
   flex-direction: row;
   border: 1px solid #d4d5db;
   border-radius: 10px;
-  background : #fff;
-  align-items : center;
+  background: #fff;
+  align-items: center;
   overflow: hidden;
 }
 
@@ -379,14 +379,14 @@ progress::-webkit-progress-value {
   border: none;
   background: none;
   color: inherit;
-  flex : auto 1 1;
-  width : 100%;
-  background : none;
-  background-color : transperant;
+  flex: auto 1 1;
+  width: 100%;
+  background: none;
+  background-color: transperant;
 }
 
-.input-icon-container .fa{
-  padding : 10px;
+.input-icon-container .fa {
+  padding: 10px;
 }
 
 /*
@@ -428,3 +428,7 @@ progress::-webkit-progress-value {
 /*
   07- End
 */
+
+.form-input-custom.last {
+  padding-right: 0;
+}

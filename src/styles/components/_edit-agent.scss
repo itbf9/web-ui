@@ -1,0 +1,18 @@
+.agent-last-activity {
+  padding: 0.375rem 0.75rem;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--bs-body-color);
+  white-space: nowrap;
+  background-color: var(--bs-tertiary-bg);
+  border: var(--bs-border-width) solid var(--bs-border-color);
+  border-radius: var(--bs-border-radius);
+  color: $color-grey-dark;
+
+  span {
+    display: inline-block;
+    width: 70px;
+    color: $color-grey;
+  }
+}

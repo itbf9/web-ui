@@ -1,0 +1,48 @@
+.chunk-state {
+  color: $color-white;
+  background-color: $color-grey-metal;
+}
+
+.chunk-state-new {
+  background-color: $color-orange-dark;
+}
+
+.chunk-state-init {
+  background-color: $color-grey-metal;
+}
+
+.chunk-state-running {
+  background-color: $color-green-dark;
+}
+
+.chunk-state-paused {
+  background-color: $color-grey-metal;
+}
+
+.chunk-state-exhausted {
+  background-color: $color-grey-metal;
+}
+
+.chunk-state-cracked {
+  background-color: $color-blue;
+}
+
+.chunk-state-aborted {
+  background-color: $color-red-dark;
+}
+
+.chunk-state-quit {
+  background-color: $color-red-dark;
+}
+
+.chunk-state-bypass {
+  background-color: $color-red-dark;
+}
+
+.chunk-state-trimmed {
+  background-color: $color-red-dark;
+}
+
+.chunk-state-aborting {
+  background-color: $color-red-dark;
+}
