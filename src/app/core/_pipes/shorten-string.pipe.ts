@@ -20,8 +20,8 @@ import {
 export class ShortenStringPipe implements PipeTransform {
 
   transform(value: any, limit: number) {
-    if(value.length > limit){
-      return value.substr(0, limit) +'...';
+    if (value && value.length > limit) {
+      return value.substr(0, limit) + '...';
     }
     return value;
   }
