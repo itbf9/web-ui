@@ -1,51 +1,67 @@
-import { faDigitalTachograph, faMicrochip, faHomeAlt, faPlus, faUserSecret,faEye, faTemperature0, faInfoCircle, faServer, faUsers, faChevronDown, faLock, faPauseCircle} from '@fortawesome/free-solid-svg-icons';
-import { ModalDismissReasons, NgbModal, NgbOffcanvas } from '@ng-bootstrap/ng-bootstrap';
-import { Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { faDigitalTachograph, faMicrochip, faHomeAlt, faPlus, faUserSecret, faEye, faTemperature0, faInfoCircle, faServer, faUsers, faChevronDown, faLock, faPauseCircle } from '@fortawesome/free-solid-svg-icons';
+import { NgbModal, NgbOffcanvas } from '@ng-bootstrap/ng-bootstrap';
+import { Component, OnDestroy, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { DataTableDirective } from 'angular-datatables';
-import { Subject } from 'rxjs';
-
+import { Subject, Subscription } from 'rxjs';
 import { UIConfigService } from 'src/app/core/_services/shared/storage.service';
-import { CookieService } from 'src/app/core/_services/shared/cookies.service';
 import { FilterService } from 'src/app/core/_services/shared/filter.service';
 import { GlobalService } from 'src/app/core/_services/main.service';
-import { PageTitle } from 'src/app/core/_decorators/autotitle';
-import { ASC } from '../../core/_constants/agentsc.config';
 import { environment } from 'src/environments/environment';
 import { SERV } from '../../core/_services/main.config';
+import { AutoTitleService } from 'src/app/core/_services/shared/autotitle.service';
+import { LocalStorageService } from 'src/app/core/_services/storage/local-storage.service';
+import { Agent } from 'src/app/core/_models/agents';
+
+
+
+export interface AgentStatusSettings {
+  viewMode: boolean
+}
 
 @Component({
   selector: 'app-agent-status',
   templateUrl: './agent-status.component.html'
 })
-@PageTitle(['Agent Status'])
-export class AgentStatusComponent implements OnInit {
-  public isCollapsed = true;
+export class AgentStatusComponent implements OnInit, OnDestroy {
 
-  faDigitalTachograph=faDigitalTachograph;
-  faTemperature0=faTemperature0;
-  faPauseCircle=faPauseCircle;
-  faChevronDown=faChevronDown;
-  faInfoCircle=faInfoCircle;
-  faUserSecret=faUserSecret;
-  faMicrochip=faMicrochip;
-  faHomeAlt=faHomeAlt;
-  faServer=faServer;
-  faUsers=faUsers;
-  faPlus=faPlus;
-  faLock=faLock;
-  faEye=faEye;
+  private subsciptions: Subscription[] = []
+  private maxResults = environment.config.prodApiMaxResults;
 
-  public statusOrderByName = environment.config.agents.statusOrderByName;
-  public statusOrderBy = environment.config.agents.statusOrderBy;
+  static readonly STORAGE_KEY = 'agent-status'
 
-  showagents: any[] = [];
-  _filteresAgents: any[] = [];
+  rackView!: boolean // TODO: verkar inte sparas vid toggle
+
+  faDigitalTachograph = faDigitalTachograph;
+  faTemperature0 = faTemperature0;
+  faPauseCircle = faPauseCircle;
+  faChevronDown = faChevronDown;
+  faInfoCircle = faInfoCircle;
+  faUserSecret = faUserSecret;
+  faMicrochip = faMicrochip;
+  faHomeAlt = faHomeAlt;
+  faServer = faServer;
+  faUsers = faUsers;
+  faPlus = faPlus;
+  faLock = faLock;
+  faEye = faEye;
+
+  statusOrderByName = environment.config.agents.statusOrderByName;
+  statusOrderBy = environment.config.agents.statusOrderBy;
+
+  showagents: Agent[] = [];
+  _filteresAgents: Agent[] = [];
   filterText = '';
+
+
+  agentStats: any;
 
   totalRecords = 0;
   pageSize = 20;
 
-  private maxResults = environment.config.prodApiMaxResults;
+  // Agents Stats
+  statDevice: any[] = [];
+  statTemp: any[] = [];
+  statCpu: any[] = [];
 
   @ViewChild(DataTableDirective)
   dtElement: DataTableDirective;
@@ -53,29 +69,55 @@ export class AgentStatusComponent implements OnInit {
   dtTrigger: Subject<any> = new Subject<any>();
   dtOptions: any = {};
 
-  ngOnDestroy(): void {
-    this.dtTrigger.unsubscribe();
-  }
-
   constructor(
     private offcanvasService: NgbOffcanvas,
     private filterService: FilterService,
-    private cookieService: CookieService,
     private uiService: UIConfigService,
     private modalService: NgbModal,
-    private gs: GlobalService
-  ) { }
-
-  // View Menu
-  view: any;
-
-  setView(value: string){
-    this.cookieService.setCookie('asview', value, 365);
-    this.ngOnInit();
+    private gs: GlobalService,
+    private localStorage: LocalStorageService<AgentStatusSettings>,
+    titleService: AutoTitleService
+  ) {
+    titleService.set(['Agent Status']);
   }
 
-  getView(){
-    return this.cookieService.getCookie('asview');
+  ngOnInit(): void {
+    this.rackView = this.getView();
+    this.getAgentsPage(1);
+    this.getAgentStats();
+    this.setupTable();
+  }
+
+  ngOnDestroy(): void {
+    for (const sub of this.subsciptions) {
+      sub.unsubscribe()
+
+    }
+    this.dtTrigger.unsubscribe();
+  }
+
+  toggleRackView(): void {
+    this.localStorage.setItem(AgentStatusComponent.STORAGE_KEY, { viewMode: this.rackView }, 31557600000);
+    this.getAgentsPage(1);
+    this.getAgentStats();
+    this.setupTable();
+  }
+
+  getView(): boolean {
+    const agentSettings: AgentStatusSettings = this.localStorage.getItem(AgentStatusComponent.STORAGE_KEY);
+    if (agentSettings) {
+      return agentSettings.viewMode
+    }
+
+    return false
+  }
+
+  displayAgentView(): boolean {
+    return !!(!this.rackView && this.agentStats && this.filteredAgents)
+  }
+
+  displayRackView(): boolean {
+    return !!(this.rackView && this.agentStats && this.filteredAgents)
   }
 
   get filteredAgents() {
@@ -86,39 +128,35 @@ export class AgentStatusComponent implements OnInit {
     this._filteresAgents = value;
   }
 
-  ngOnInit(): void {
-    this.view = this.getView() || 0;
-    this.getAgentsPage(1);
-    this.getAgentStats();
-
+  setupTable(): void {
     const self = this;
     this.dtOptions = {
       dom: 'Bfrtip',
       scrollX: true,
       pageLength: 25,
       lengthMenu: [
-          [10, 25, 50, 100, 250, -1],
-          [10, 25, 50, 100, 250, 'All']
+        [10, 25, 50, 100, 250, -1],
+        [10, 25, 50, 100, 250, 'All']
       ],
       scrollY: true,
       bDestroy: true,
       columnDefs: [
         {
-            targets: 0,
-            className: 'noVis'
+          targets: 0,
+          className: 'noVis'
         }
       ],
       order: [[0, 'desc']],
-      bStateSave:true,
+      bStateSave: true,
       select: {
         style: 'multi',
+      },
+      buttons: {
+        dom: {
+          button: {
+            className: 'dt-button buttons-collection btn btn-sm-dt btn-outline-gray-600-dt',
+          }
         },
-        buttons: {
-          dom: {
-            button: {
-              className: 'dt-button buttons-collection btn btn-sm-dt btn-outline-gray-600-dt',
-            }
-          },
         buttons: [
           {
             text: '↻',
@@ -142,46 +180,48 @@ export class AgentStatusComponent implements OnInit {
                 exportOptions: {
                   columns: [0, 1, 2, 3, 4]
                 },
-                customize: function ( win ) {
+                customize: function (win) {
                   $(win.document.body)
-                      .css( 'font-size', '10pt' )
-                  $(win.document.body).find( 'table' )
-                      .addClass( 'compact' )
-                      .css( 'font-size', 'inherit' );
-               }
+                    .css('font-size', '10pt')
+                  $(win.document.body).find('table')
+                    .addClass('compact')
+                    .css('font-size', 'inherit');
+                }
               },
               {
                 extend: 'csvHtml5',
-                exportOptions: {modifier: {selected: true}},
+                exportOptions: { modifier: { selected: true } },
                 select: true,
                 customize: function (dt, csv) {
                   let data = "";
                   for (let i = 0; i < dt.length; i++) {
-                    data = "Agent Status\n\n"+  dt;
+                    data = "Agent Status\n\n" + dt;
                   }
                   return data;
-               }
+                }
               },
-                'copy'
-              ]
-            },
-            {
-              extend: 'colvis',
-              text: 'Column View',
-              columns: [ 1,2,3,4 ],
-            },
-            {
-              extend: "pageLength",
-              className: "btn-sm"
-            },
-          ],
-        }
+              'copy'
+            ]
+          },
+          {
+            extend: 'colvis',
+            text: 'Column View',
+            columns: [1, 2, 3, 4],
+          },
+          {
+            extend: "pageLength",
+            className: "btn-sm"
+          },
+        ],
       }
+    }
   }
 
-  onRefresh(){
+  onRefresh() {
     this.rerender();
-    this.ngOnInit();
+    this.getAgentsPage(1);
+    this.getAgentStats();
+    this.setupTable();
   }
 
   rerender(): void {
@@ -190,127 +230,71 @@ export class AgentStatusComponent implements OnInit {
       dtInstance.destroy();
       // Call the dtTrigger to rerender again
       setTimeout(() => {
-        this.dtTrigger['new'].next();
+        if (this.dtTrigger['new']) {
+          this.dtTrigger['new'].next();
+        }
       });
     });
   }
-
 
   pageChanged(page: number) {
     this.getAgentsPage(page);
   }
 
   getAgentsPage(page: number) {
-    const params = {'maxResults': this.maxResults};
-    this.gs.getAll(SERV.AGENTS,params).subscribe((a: any) => {
-      this.gs.getAll(SERV.AGENT_ASSIGN,params).subscribe((assign: any) => {
-        this.gs.getAll(SERV.TASKS,params).subscribe((t: any)=>{
-          this.gs.getAll(SERV.CHUNKS,params).subscribe((c: any)=>{
+    const params = { 'maxResults': this.maxResults };
+    this.gs.getAll(SERV.AGENTS, params).subscribe((a: any) => {
+      this.gs.getAll(SERV.AGENT_ASSIGN, params).subscribe((assign: any) => {
+        this.gs.getAll(SERV.TASKS, params).subscribe((t: any) => {
+          this.gs.getAll(SERV.CHUNKS, params).subscribe((c: any) => {
 
             const getAData = a.values.map(mainObject => {
               const matchObjectTask = assign.values.find(e => e.agentId === mainObject.agentId)
-              return { ...mainObject, ...matchObjectTask}
+              return { ...mainObject, ...matchObjectTask }
             })
             this.totalRecords = a.total;
             const jointasks = getAData.map(mainObject => {
               const matchObjectTask = t.values.find(e => e.taskId === mainObject.taskId)
-              return { ...mainObject, ...matchObjectTask}
+              return { ...mainObject, ...matchObjectTask }
             })
-
 
             this.showagents = this.filteredAgents = jointasks.map(mainObject => {
-            const matchObjectAgents = c.values.find(e => e.agentId === mainObject.agentId)
-            return { ...mainObject, ...matchObjectAgents}
+              const matchObjectAgents = c.values.find(e => e.agentId === mainObject.agentId)
+              return { ...mainObject, ...matchObjectAgents }
             })
 
-            console.log(this.showagents);
             this.dtTrigger.next(void 0);
+          })
         })
-      })
+      });
     });
-  });
   }
 
-  // Agents Stats
-  statDevice: any[] = [];
-  statTemp: any[] = [];
-  statCpu: any[] = [];
-
-  getAgentStats(){
+  getAgentStats() {
     // const paramsstat = {'maxResults': this.maxResults, 'filter': 'time>'+this.gettime()+''}; //Waiting for API date filters
-    const paramsstat = {'maxResults': this.maxResults};
-    this.gs.getAll(SERV.AGENTS_STATS,paramsstat).subscribe((stats: any) => {
-      const tempDateFilter = stats.values.filter(u=> u.time > 10000000); // Temp
-      // const tempDateFilter = stats.values.filter(u=> u.time > this.gettime()); // Temp
-      this.statTemp = tempDateFilter.filter(u=> u.statType == ASC.GPU_TEMP); // Temp
-      this.statDevice = tempDateFilter.filter(u=> u.statType == ASC.GPU_UTIL); // Temp
-      this.statCpu =tempDateFilter.filter(u=> u.statType == ASC.CPU_UTIL); // Temp
-      // this.statTemp = stats.values.filter(u=> u.statType == ASC.GPU_TEMP); // filter Device Temperature
-      // this.statDevice = stats.values.filter(u=> u.statType == ASC.GPU_UTIL); // filter Device Utilization
-      // this.statCpu = stats.values.filter(u=> u.statType == ASC.CPU_UTIL); // filter CPU utilization
+    const paramsstat = { 'maxResults': this.maxResults };
+    this.gs.getAll(SERV.AGENTS_STATS, paramsstat).subscribe((stats: any) => {
+      this.agentStats = stats
     });
   }
 
-  gettime(){
+  gettime() {
     const time = (Date.now() - this.uiService.getUIsettings('agenttimeout').value)
     return time;
   }
 
-  // On change filter
-
   filterChanged(data: string) {
     if (data && this.showagents) {
-        data = data.toUpperCase();
-        const props = ['agentName', 'agentId'];
-        this._filteresAgents = this.filterService.filter<any>(this.showagents, data, props);
+      data = data.toUpperCase();
+      const props = ['agentName', 'agentId'];
+      this._filteresAgents = this.filterService.filter<any>(this.showagents, data, props);
     } else {
       this._filteresAgents = this.showagents;
     }
   }
 
-  // Modal Agent utilisation and OffCanvas menu
-
-  getTemp1(){  // Temperature Config Setting
-    return this.uiService.getUIsettings('agentTempThreshold1').value;
-  }
-
-  getTemp2(){  // Temperature 2 Config Setting
-    return this.uiService.getUIsettings('agentTempThreshold2').value;
-  }
-
-  getUtil1(){  // CPU Config Setting
-    return this.uiService.getUIsettings('agentUtilThreshold1').value;
-  }
-
-  getUtil2(){  // CPU 2 Config Setting
-    return this.uiService.getUIsettings('agentUtilThreshold2').value;
-  }
-
-  closeResult = '';
-  open(content) {
-		this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title' }).result.then(
-			(result) => {
-				this.closeResult = `Closed with: ${result}`;
-			},
-			(reason) => {
-				this.closeResult = `Dismissed ${this.getDismissReason(reason)}`;
-			},
-		);
-	}
-
-	private getDismissReason(reason: any): string {
-		if (reason === ModalDismissReasons.ESC) {
-			return 'by pressing ESC';
-		} else if (reason === ModalDismissReasons.BACKDROP_CLICK) {
-			return 'by clicking on a backdrop';
-		} else {
-			return `with: ${reason}`;
-		}
-	}
 
   openEnd(content: TemplateRef<any>) {
-		this.offcanvasService.open(content, { position: 'end' });
-	}
-
-
+    this.offcanvasService.open(content, { position: 'end' });
+  }
 }

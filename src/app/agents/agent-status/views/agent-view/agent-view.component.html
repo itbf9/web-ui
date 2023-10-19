@@ -1,0 +1,121 @@
+<div class="row card-container-ag">
+  <div class="col-xs-6 col-md-4 col-lg-2"
+    *ngFor="let a of agents | sort:statusOrderBy:statusOrderByName ; let ind=index">
+    <div class="card card-ag overflowAuto">
+      <div class="card-header-ag text-center">
+        <a [routerLink]="['/agents/show-agents', a.agentId,'edit']">{{ a.agentName | shortenString:15 }}</a>
+      </div>
+      <div class="card-body">
+        <div class="clearfix">
+          <div class="pull-left card-body-left-ag"></div>
+          <div class="pull-left card-body-right-ag">
+            <!-- Device Utilisation -->
+            <div class="card-body-content-ag"
+              *ngIf="statDevice | filterItem:'agentId':a.agentId | avg:'value' as result">
+              <div class="agent-status-icon-wrapper">
+                <fa-icon placement="bottom" (click)="open(device)" container="body" [icon]="faDigitalTachograph"
+                  aria-hidden="true" class="agent-status-icon"
+                  [ngClass]="getUtilClass(result, a.isActive, a.lastTime)" />
+              </div>
+              <a href="#" (click)="open(device)" class="display-col agent-status-link">
+                {{ result === 'No data' ? result : result +'%'}}
+              </a>
+              <!-- Modal -->
+              <ng-template #device let-modal>
+                <div class="modal-header">
+                  <h4 class="modal-title" id="modal-basic-title">
+                    <fa-icon [icon]="faDigitalTachograph" aria-hidden="true"></fa-icon>
+                    Device Utilisation -
+                    <span [ngClass]="getUtilClass(result, a.isActive, a.lastTime)">&#9673;</span>
+                    {{ result === 'No data'? result:result +'%' }}
+                  </h4>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <status-param-group okMessage="Device utilisation is good (&gt;= {{ utilThreshold1 }})"
+                      warningMessage="Device utilisation is acceptable ( &gt;= {{ utilThreshold2 }})"
+                      criticalMessage="Device utilisation is too low ( &lt; {{ utilThreshold2 }})" />
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <form>
+                    <button type="button" class="btn btn-outline-dark" (click)="modal.close('Save click')">Ok</button>
+                  </form>
+                </div>
+              </ng-template>
+            </div>
+            <!-- Temperature -->
+            <div class="card-body-content-ag" *ngIf="statTemp | filterItem:'agentId':a.agentId | max:'value' as result">
+              <div class="agent-status-icon-wrapper">
+                <fa-icon placement="bottom" (click)="open(temperature)" container="body" [icon]="faTemperature0"
+                  aria-hidden="true" class="agent-status-icon"
+                  [ngClass]="getTempClass(result, a.isActive, a.lastTime)" />
+              </div>
+              <a href="#" (click)="open(temperature)" class="display-col agent-status-link">
+                {{ result === 'No data'? result : result +'°' }}
+              </a>
+              <!-- Modal -->
+              <ng-template #temperature let-modal>
+                <div class="modal-header">
+                  <h4 class="modal-title" id="modal-basic-title">
+                    <fa-icon [icon]="faTemperature0" aria-hidden="true"></fa-icon>
+                    Temperature -
+                    <span [ngClass]="getTempClass(result, a.isActive, a.lastTime)">&#9673;</span>
+                    {{ result === 'No data'? result:result +'°' }}
+                  </h4>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <status-param-group okMessage="Device temperatures is good ( &lt;= {{ tempThreshold1 }})"
+                      warningMessage="Device temperatures is acceptable ( &lt;= {{ tempThreshold2 }})"
+                      criticalMessage="Device temperatures is too high ( &gt; {{ tempThreshold2 }})" />
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <form>
+                    <button type="button" class="btn btn-outline-dark" (click)="modal.close('Save click')">Ok</button>
+                  </form>
+                </div>
+              </ng-template>
+            </div>
+            <!-- GPU Utilisation -->
+            <div class="card-body-content-ag" *ngIf="statCpu | filterItem:'agentId':a.agentId | avg:'value' as result">
+              <div class="agent-status-icon-wrapper">
+                <fa-icon placement="bottom" (click)="open(cpu)" container="body" [icon]="faMicrochip" aria-hidden="true"
+                  class="agent-status-icon" [ngClass]="getUtilClass(result, a.isActive, a.lastTime)" />
+              </div>
+              <a href="#" (click)="open(cpu)" class="display-col agent-status-link">
+                {{ result === 'No data'? result : result +'%' }}
+              </a>
+              <!-- Modal -->
+              <ng-template #cpu let-modal>
+                <div class="modal-header">
+                  <h4 class="modal-title" id="modal-basic-title">
+                    <fa-icon [icon]="faMicrochip" aria-hidden="true" />
+                    CPU Utilisation - <span [ngClass]="getUtilClass(result, a.isActive, a.lastTime)">&#9673;</span>
+                    {{ result === 'No data'? result : result +'%' }}
+                  </h4>
+                </div>
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <status-param-group okMessage="CPU utilisation is good ( &gt;= {{ utilThreshold1 }})"
+                      warningMessage="CPU utilisation is acceptable ( &gt;= {{ utilThreshold2 }})"
+                      criticalMessage="CPU utilisation is too low ( &lt; {{ utilThreshold2 }})" />
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <form>
+                    <button type="button" class="btn btn-outline-dark" (click)="modal.close('Save click')">Ok</button>
+                  </form>
+                </div>
+              </ng-template>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div *ngIf="!agents.length">
+    No Records Found
+  </div>
+</div>
