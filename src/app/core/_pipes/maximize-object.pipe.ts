@@ -19,21 +19,14 @@ import {
 })
 export class MaximizePipe implements PipeTransform {
 
-  transform(value: any[], name: string) {
-      if (value.length === 0 || !name) {
-        return 'No data';
-      }
-
-      value.sort((a, b) => b[name] - a[name]);
-
-      // Get maximum from array
-      // var arr = [];
-      // for(let i=0; i < value.length; i++){
-      //   arr.push(value[i][name]);
-      // }
-      // var max = Math.max(...arr)
-
-      return Math.round(value[0][name]).toFixed(1);
-
+  transform(value: any[], name: string): string {
+    if (!value || value.length === 0 || !name) {
+      return 'No data';
     }
+
+    const arr: number[] = value.map(item => parseFloat(item[name]));
+    const max: number = Math.max(...arr);
+
+    return `${max}`;
+  }
 }
