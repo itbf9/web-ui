@@ -60,6 +60,7 @@
     "lottie-web": "^5.12.2",
     "moment": "^2.29.4",
     "ngx-color-picker": "^14.0.0",
+    "ngx-echarts": "^16.1.1",
     "ngx-lottie": "^10.0.0",
     "ngx-moment": "^6.0.2",
     "opentracing": "^0.14.7",
