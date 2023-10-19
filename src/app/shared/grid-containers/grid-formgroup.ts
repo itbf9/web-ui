@@ -1,14 +1,12 @@
-import { faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { Component, Input } from '@angular/core';
-import { Router } from '@angular/router';
-import { FormGroup } from '@angular/forms';
+import { faInfoCircle } from '@fortawesome/free-solid-svg-icons'
+import { Component, Input, OnInit } from '@angular/core'
 
 @Component({
   selector: 'grid-form-input',
   template: `
 <div class="form-group">
-  <div class="form-outline form-input-custom">
-    <label class="form-label {{labelclass}}" for={{name}} >{{name}}</label>
+  <div [ngClass]="cssClasses">
+    <label class="form-label {{labelclass}}" for={{name}}>{{name}}</label>
     <fa-icon
       placement="bottom"
       ngbTooltip='{{tooltip}}'
@@ -25,17 +23,16 @@ import { FormGroup } from '@angular/forms';
 })
 export class GridFormInputComponent {
 
-  faInfoCircle = faInfoCircle;
+  faInfoCircle = faInfoCircle
 
-  @Input() name?: any;
-  @Input() labelclass?: any;
-  @Input() tooltip?: any;
+  @Input() name?: string
+  @Input() labelclass?: string
+  @Input() tooltip?: any
+  @Input() additionalClasses: string[] = []
 
-  tooltio: any;
-
-  constructor(
-    private router: Router
-  ) { }
+  get cssClasses(): string {
+    return ['form-outline', 'form-input-custom', ...this.additionalClasses].join(' ');
+  }
 
 }
 
