@@ -14,15 +14,28 @@ import { DirectivesModule } from "../shared/directives.module";
 import { ComponentsModule } from "../shared/components.module";
 import { AgentsRoutingModule } from "./agents-routing.module";
 import { PipesModule } from "../shared/pipes.module";
+import { AgentStatusParamComponent } from './components/agent-status-param/agent-status-param.component';
+import { StatusParamGroupComponent } from './components/status-param-group/status-param-group.component';
+import { AgentViewComponent } from './agent-status/views/agent-view/agent-view.component';
+import { RackViewComponent } from './agent-status/views/rack-view/rack-view.component';
+import { NgxEchartsModule } from 'ngx-echarts';
+import { AgentStatGraphComponent } from './components/agent-stat-graph/agent-stat-graph.component';
+import { CoreComponentsModule } from '../core/_components/core-components.module';
+
 
 @NgModule({
-  declarations:[
+  declarations: [
     AgentStatusComponent,
     ShowAgentsComponent,
     EditAgentComponent,
-    NewAgentComponent
+    NewAgentComponent,
+    AgentStatusParamComponent,
+    StatusParamGroupComponent,
+    AgentViewComponent,
+    RackViewComponent,
+    AgentStatGraphComponent,
   ],
-  imports:[
+  imports: [
     ReactiveFormsModule,
     AgentsRoutingModule,
     FontAwesomeModule,
@@ -33,7 +46,11 @@ import { PipesModule } from "../shared/pipes.module";
     RouterModule,
     FormsModule,
     PipesModule,
-    NgbModule
+    NgbModule,
+    CoreComponentsModule,
+    NgxEchartsModule.forRoot({
+      echarts: () => import('echarts')
+    })
   ]
 })
-export class AgentsModule {}
+export class AgentsModule { }
