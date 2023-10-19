@@ -55,7 +55,7 @@ export class StaticArrayPipe implements PipeTransform {
       "Quit",
       "Bypass",
       "Trimmed",
-      "Aborting..."
+      "Aborting"
     ];
     const statescolor = [
       "orange",
