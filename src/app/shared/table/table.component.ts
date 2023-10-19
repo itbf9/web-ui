@@ -1,30 +1,23 @@
-import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, HostListener } from '@angular/core';
 
 @Component({
   selector: 'app-table',
-  template: `
-<div class="card shadow">
-  <div [ngClass]="getResizeTable()" class="btn-overflow">
-      <div #content><ng-content ></ng-content></div>
-  </div>
-</div>
-`,
-host: {
-  "(window:resize)":"onWindowResize($event)"
-}
+  templateUrl: './table.component.html',
 })
-export class TableComponent  {
+export class TableComponent {
+  tableClass = 'card-body table-responsive';
 
-  constructor(
-    private router: Router
-  ) { }
+  @HostListener('window:resize', ['$event'])
+  onWindowResize(event: Event): void {
+    /*
+    Example:
 
-  public getResizeTable(){
-
-   return 'card-body table-responsive';
-
+    if (window.innerWidth < 768) {
+      this.tableClass = 'small-screen-class';
+    } else {
+      this.tableClass = 'large-screen-class';
+    }
+    
+    */
   }
-
-
 }
