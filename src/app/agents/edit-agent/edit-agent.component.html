@@ -2,37 +2,33 @@
 <app-page-title [title]="'Agent Details'" [subbutton]="false"></app-page-title>
 <!-- Body -->
 <grid-main [class]="'width:100%'">
-  <form [formGroup]="updateForm" (ngSubmit)="onSubmit()">
+  <form [formGroup]="form" (ngSubmit)="onSubmit()">
     <div class="row g-3">
       <div class="col-md-2">
         <grid-form-input [name]="'Agent ID'">
           <div class="input-group">
             <span class="pre input-group-text input-group-lg">
-              <td>
-                {{ showagent['agentId'] }}
-              </td>
+              {{ agent._id }}
             </span>
           </div>
         </grid-form-input>
       </div>
       <div class="col-md-10">
-        <grid-form-input [name]="'Last activity'">
-          <span class="input-group-text input-group-lg w-60 mx-auto">
-            <td>
-              Time: {{ showagent['lastTime'] | uiDate }}<br>
-              Action: {{ showagent['lastAct'] }}<br>
-              IP: <code>{{ showagent['lastIp'] }}</code>
-            </td>
-          </span>
+        <grid-form-input [name]="'Last activity'" [additionalClasses]="['last']">
+          <div class="agent-last-activity">
+            <span>Time:</span>{{ agent.lastTime | uiDate }}<br>
+            <span>Action:</span>{{ agent.lastAct }}<br>
+            <span>IP:</span><code>{{ agent.lastIp }}</code>
+          </div>
         </grid-form-input>
       </div>
     </div>
-    <ngb-accordion #acc="ngbAccordion" >
+    <ngb-accordion #acc="ngbAccordion">
       <ngb-panel>
         <ng-template ngbPanelTitle>
           <span><b>Show/Hide details</b></span>
         </ng-template>
-        <ng-template ngbPanelContent>
+        <ng-template ngbPanelContent let-form="form">
           <div class="row">
             <div class="col">
               <grid-form-input [name]="'Machine Name'" [labelclass]="'display-col'">
@@ -40,12 +36,7 @@
                   <span class="input-group-text">
                     <fa-icon [icon]="faComputer" aria-hidden="true"></fa-icon>
                   </span>
-                  <input
-                        type='text'
-                        id="agentName"
-                        class='form-control'
-                        formControlName="agentName"
-                  >
+                  <input type='text' id="agentName" class='form-control' formControlName="agentName">
                 </div>
               </grid-form-input>
             </div>
@@ -55,12 +46,8 @@
                   <span class="input-group-text">
                     <fa-icon [icon]="faIdBadge" aria-hidden="true"></fa-icon>
                   </span>
-                  <select
-                          id="userId"
-                          class='form-select'
-                          formControlName="userId"
-                  >
-                  <option *ngFor="let u of users" [ngValue]="u.id">{{ u.name }}</option>
+                  <select id="userId" class='form-select' formControlName="userId">
+                    <option *ngFor="let u of users" [ngValue]="u._id">{{ u.name }}</option>
                   </select>
                 </div>
               </grid-form-input>
@@ -71,38 +58,25 @@
             <div class="col-md-2">
               <grid-form-input [name]="'CPU only'" [labelclass]="'display-col'">
                 <div class="form-check form-switch">
-                  <input
-                        type="checkbox"
-                        id="cpuOnly"
-                        class="form-check-input"
-                        formControlName="cpuOnly"
-                  >
-              </div>
-             </grid-form-input>
+                  <input type="checkbox" id="cpuOnly" class="form-check-input" formControlName="cpuOnly">
+                </div>
+              </grid-form-input>
             </div>
             <div class="col-md-2">
               <grid-form-input [name]="'Trust'" [labelclass]="'display-col'" [tooltip]="'Trust agent with secret data'">
                 <div class="form-check form-switch">
-                  <input
-                        type="checkbox"
-                        id="isTrusted"
-                        class="form-check-input"
-                        formControlName="isTrusted"
-                  >
-              </div>
-             </grid-form-input>
+                  <input type="checkbox" id="isTrusted" class="form-check-input" formControlName="isTrusted">
+                </div>
+              </grid-form-input>
             </div>
             <div class="col-md-8">
-              <form [formGroup]="updateAssignForm" (ngSubmit)="onSubmit()">
+              <form [formGroup]="assignedTaskForm" (ngSubmit)="onSubmit()">
                 <grid-form-input [name]="'Assignment'" [labelclass]="'display-col'">
-                  <select
-                        type='text'
-                        id="assignment"
-                        class='form-select'
-                        formControlName="taskId"
-                      >
-                      <option [ngValue]="0" *ngIf="assignNew">Unassigned</option>
-                      <option *ngFor="let a of assignTasks" [ngValue]="a.taskId">{{ a.taskId }} - {{ a.taskName }}</option>
+                  <select type='text' id="assignment" class='form-select' formControlName="taskId">
+                    <option [ngValue]="0" *ngIf="hasAssignedTask">Unassigned</option>
+                    <option *ngFor="let a of assignTasks" [ngValue]="a.taskId">
+                      {{ a.taskId }} - {{ a.taskName }}
+                    </option>
                   </select>
                 </grid-form-input>
               </form>
@@ -111,25 +85,15 @@
           <div class="row">
             <div class="col">
               <grid-form-input [name]="'Extra parameters'" [labelclass]="'display-col'">
-                <input
-                      type='text'
-                      id="cmdPars"
-                      class='form-control'
-                      formControlName="cmdPars"
-                >
+                <input type='text' id="cmdPars" class='form-control' formControlName="cmdPars">
               </grid-form-input>
             </div>
             <div class="col">
               <grid-form-input [name]="'Cracker errors'" [labelclass]="'display-col'">
-                <select
-                      type='text'
-                      id="ignoreErrors"
-                      class='form-select'
-                      formControlName="ignoreErrors"
-                  >
-                  <option value="NO">Deactivate agent on error</option>
-                  <option value="IGNORE_SAVE">Keep agent running, but save errors</option>
-                  <option value="IGNORE_NOSAVE">Keep agent running and discard errors</option>
+                <select type='text' id="ignoreErrors" class='form-select' formControlName="ignoreErrors">
+                  <option [ngValue]="0">Deactivate agent on error</option>
+                  <option [ngValue]="1">Keep agent running, but save errors</option>
+                  <option [ngValue]="2">Keep agent running and discard errors</option>
                 </select>
               </grid-form-input>
             </div>
@@ -141,41 +105,41 @@
               <grid-form-input [name]="'Machine ID'" [labelclass]="'display-col'">
                 <span class="pre input-group-text input-group-lg w-70 mx-auto">
                   <td>
-                    {{ showagent['uid'] }}
+                    {{ agent.uid }}
                   </td>
                 </span>
               </grid-form-input>
-              </div>
-              <div class="col">
-                <grid-form-input [name]="'Access token'" [labelclass]="'display-col'">
-                  <span class="pre input-group-text input-group-lg w-70 mx-auto">
-                      <fa-icon [icon]="faKey" aria-hidden="true"></fa-icon>
-                    <td>
-                      {{ showagent['token'] }}
-                    </td>
-                  </span>
-                </grid-form-input>
-              </div>
-              <div class="col">
-                <grid-form-input [name]="'O.S.'" [labelclass]="'display-col'">
-                    <span *ngIf="showagent['os'] === 0" class="input-group-text input-group-lg w-15 mx-auto">
-                      <fa-icon [icon]="faLinux" aria-hidden="true"></fa-icon>Linux
-                    </span>
-                    <span *ngIf="showagent['os'] === 1" class="input-group-text input-group-lg w-15 mx-auto">
-                      <fa-icon [icon]="faWindows" aria-hidden="true"></fa-icon>Windows
-                    </span>
-                    <span *ngIf="showagent['os'] === 2" class="input-group-text input-group-lg w-15 mx-auto">
-                      <fa-icon [icon]="faApple" aria-hidden="true"></fa-icon>IOS
-                    </span>
-                </grid-form-input>
-              </div>
+            </div>
+            <div class="col">
+              <grid-form-input [name]="'Access token'" [labelclass]="'display-col'">
+                <span class="pre input-group-text input-group-lg w-70 mx-auto">
+                  <fa-icon [icon]="faKey" aria-hidden="true"></fa-icon>
+                  <td>
+                    {{ agent.token }}
+                  </td>
+                </span>
+              </grid-form-input>
+            </div>
+            <div class="col">
+              <grid-form-input [name]="'O.S.'" [labelclass]="'display-col'">
+                <span *ngIf="agent.os === 0" class="input-group-text input-group-lg w-15 mx-auto">
+                  <fa-icon [icon]="faLinux" aria-hidden="true"></fa-icon>Linux
+                </span>
+                <span *ngIf="agent.os === 1" class="input-group-text input-group-lg w-15 mx-auto">
+                  <fa-icon [icon]="faWindows" aria-hidden="true"></fa-icon>Windows
+                </span>
+                <span *ngIf="agent.os === 2" class="input-group-text input-group-lg w-15 mx-auto">
+                  <fa-icon [icon]="faApple" aria-hidden="true"></fa-icon>IOS
+                </span>
+              </grid-form-input>
+            </div>
           </div>
           <div class="row g-3">
             <div class="col-md-8">
               <grid-form-input [name]="'Graphic cards'" [labelclass]="'display-col'">
                 <span class="pre input-group-text input-group-lg w-70 mx-auto">
                   <td>
-                    {{ showagent['devices'] }}
+                    {{ agent.devices }}
                   </td>
                 </span>
               </grid-form-input>
@@ -184,7 +148,7 @@
               <grid-form-input [name]="'Member of access groups'" [labelclass]="'display-col'">
                 <span class="pre input-group-text input-group-lg">
                   <td>
-                    <div *ngFor="let g of groups" style="text-align:left;">
+                    <div *ngFor="let g of agent.accessGroups" style="text-align:left;">
                       <a [routerLink]="['/users/access-groups/',g.accessGroupId,'edit']">{{g.groupName}}</a>
                     </div>
                   </td>
@@ -207,37 +171,27 @@
     &nbsp;
     <grid-form-input [name]="'Active'" [labelclass]="'display-col'">
       <div class="form-check form-switch">
-        <input
-              type="checkbox"
-              id="isActive"
-              class="form-check-input"
-              formControlName="isActive"
-        >
+        <input type="checkbox" id="isActive" class="form-check-input" formControlName="isActive">
       </div>
     </grid-form-input>
-    <button-submit [name]="'Update'"></button-submit>
+    <div class="row">
+      <div class="col">
+        <button-submit name="Update" [disabled]="formIsInvalid()"></button-submit>
+      </div>
+      <div class="col text-end">
+        <button-reset label="Reset" (click)="updateForm()"></button-reset>
+      </div>
+    </div>
   </form>
 </grid-main>
 <!-- Graphs -->
 <app-table>
   <app-page-subtitle [subtitle]="'Device(s) Temperature'"></app-page-subtitle>
-  <div class="row">
-    <div class="col col-12">
-      <div id="tempgraph" style="height: 250px;"></div>
-    </div>
-  </div>
+  <agent-stat-graph [data]="temperatureData" saveAsName="DeviceTemperature"></agent-stat-graph>
   <app-page-subtitle [subtitle]="'Device(s) Utilization'"></app-page-subtitle>
-  <div class="row">
-    <div class="col col-12">
-      <div id="devicegraph" style="height: 250px;"></div>
-    </div>
-  </div>
+  <agent-stat-graph [data]="gpuUtilData" saveAsName="DeviceUtilization"></agent-stat-graph>
   <app-page-subtitle [subtitle]="'Agent average CPU utilization'"></app-page-subtitle>
-  <div class="row">
-    <div class="col col-12">
-      <div id="cpugraph" style="height: 250px;"></div>
-    </div>
-  </div>
+  <agent-stat-graph [data]="cpuUtilData" saveAsName="CPUUtilization"></agent-stat-graph>
 </app-table>
 <!-- Errors -->
 <!-- <app-table>
@@ -245,52 +199,6 @@
 </app-table> -->
 <!-- Dispatched Chunks -->
 <app-table>
-  <app-page-subtitle [subtitle]="'Dispatched chunks (Latest 50)'"></app-page-subtitle>
-  <div class="table-responsive">
-    <table style="width: 100%" class="table table-striped table-hover table-sm" #agentchunks datatable [dtOptions]="dtOptions" [dtTrigger]="dtTrigger" id="agentchunks">
-      <thead class="thead-light">
-        <tr>
-          <th class="rounded-start">ID</th>
-          <th>Start</th>
-          <th>Length</th>
-          <th>Checkpoint</th>
-          <th>Progress</th>
-          <th>Task</th>
-          <th>Dispatch time</th>
-          <th>Last activity</th>
-          <th>Time spent</th>
-          <th>State</th>
-          <th class="rounded-end">Cracked</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr *ngFor="let gc of getchunks">
-          <td>{{ gc.chunkId }}</td>
-          <td>{{ gc.skip }}</td>
-          <td>{{ gc.length }}</td>
-          <td>{{ gc.progress }} ({{ (gc.progress)/gc.length | percent:'1.2-2' }})</td>
-          <td *ngIf="gc.progress > 0">{{ gc.progress/100 }} %</td>
-          <td *ngIf="!gc.progress">N/A</td>
-          <td>
-            <a [routerLink]="['/tasks/show-tasks',gc.taskId,'edit']">{{ gc.taskName | shortenString:15 }}</a>
-          </td>
-          <td>{{ gc.dispatchTime | uiDate }}</td>
-          <td *ngIf="gc.solveTime === 0">(No activity)</td>
-          <td *ngIf="gc.solveTime > 0"> {{ gc.solveTime | uiDate}} </td>
-          <td>{{ (gc.solveTime - gc.dispatchTime) | sectotime }}</td>
-          <td>
-            <span class="ui-label-inner inline-flex whitespace-nowrap items-center px-2 py-0.5 rounded-md text-xs font-medium text-white capitalize badge my-0" style="{{'background-color:'+(gc.state | staticArray:'statescolor')}}">
-              {{ gc.state | staticArray:'states' }}
-            </span>
-          </td>
-          <td>
-            <a *ngIf="gc.cracked > 0" [routerLink]="['/hashlists/hashes/','tasks',gc.taskId]">{{ gc.cracked }}</a>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <app-page-subtitle subtitle="Dispatched chunks (Latest 50)"></app-page-subtitle>
+  <chunks-table [agentId]="agent._id"></chunks-table>
 </app-table>
-
-
-

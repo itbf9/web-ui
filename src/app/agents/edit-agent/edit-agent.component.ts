@@ -1,404 +1,278 @@
-import { TitleComponent,TitleComponentOption, ToolboxComponent, ToolboxComponentOption,TooltipComponent,TooltipComponentOption,GridComponent,GridComponentOption,LegendComponent,MarkLineComponent,MarkPointComponent,MarkLineComponentOption} from 'echarts/components';
-import { faAlignJustify, faIdBadge, faComputer, faKey, faInfoCircle, faEye } from '@fortawesome/free-solid-svg-icons';
-import { faLinux, faWindows, faApple } from '@fortawesome/free-brands-svg-icons';
-import { FormControl, FormGroup, Validators } from '@angular/forms';
-import { ActivatedRoute, Params, Router } from '@angular/router';
-import { Component, OnInit, ViewChild } from '@angular/core';
-import { ASC } from '../../core/_constants/agentsc.config';
-import { UniversalTransition } from 'echarts/features';
-import { DataTableDirective } from 'angular-datatables';
-import Swal from 'sweetalert2/dist/sweetalert2.js';
-import { CanvasRenderer } from 'echarts/renderers';
-import { LineChart } from 'echarts/charts';
-import * as echarts from 'echarts/core';
-import { Subject } from 'rxjs';
-
-import { UIConfigService } from 'src/app/core/_services/shared/storage.service';
-import { GlobalService } from 'src/app/core/_services/main.service';
-import { environment } from './../../../environments/environment';
-import { PageTitle } from 'src/app/core/_decorators/autotitle';
-import { SERV } from '../../core/_services/main.config';
+import { faAlignJustify, faIdBadge, faComputer, faKey, faInfoCircle, faEye } from '@fortawesome/free-solid-svg-icons'
+import { faLinux, faWindows, faApple } from '@fortawesome/free-brands-svg-icons'
+import { FormBuilder, Validators } from '@angular/forms'
+import { ActivatedRoute, Router } from '@angular/router'
+import { Component, OnDestroy, OnInit } from '@angular/core'
+import { ASC } from '../../core/_constants/agentsc.config'
+import Swal from 'sweetalert2/dist/sweetalert2.js'
+import { Observable, Subscription, forkJoin } from 'rxjs'
+import { GlobalService } from 'src/app/core/_services/main.service'
+import { environment } from './../../../environments/environment'
+import { PageTitle } from 'src/app/core/_decorators/autotitle'
+import { SERV } from '../../core/_services/main.config'
+import { Agent, AgentStats } from 'src/app/core/_models/agents'
+import { Task } from 'src/app/core/_models/task'
+import { ListResponseWrapper } from 'src/app/core/_models/response'
+import { User } from 'src/app/core/_models/user.model'
+import { Chunk } from 'src/app/core/_models/chunk'
+import { AgentFormModel, AssignedTaskFormModel } from './edit-agent.forms'
 
 @Component({
   selector: 'app-edit-agent',
   templateUrl: './edit-agent.component.html'
 })
 @PageTitle(['Edit Agent'])
-export class EditAgentComponent implements OnInit {
+export class EditAgentComponent implements OnInit, OnDestroy {
 
-  editMode = false;
-  editedAgentIndex: number;
-  editedAgent: any // Change to Model
+  private subscriptions: Subscription[] = []
 
-  faAlignJustify=faAlignJustify;
-  faInfoCircle=faInfoCircle;
-  faComputer=faComputer;
-  faIdBadge=faIdBadge;
-  faWindows=faWindows;
-  faLinux=faLinux;
-  faApple=faApple;
-  faKey=faKey;
-  faEye=faEye;
+  agent!: Agent
 
-  private maxResults = environment.config.prodApiMaxResults;
+  faAlignJustify = faAlignJustify
+  faInfoCircle = faInfoCircle
+  faComputer = faComputer
+  faIdBadge = faIdBadge
+  faWindows = faWindows
+  faLinux = faLinux
+  faApple = faApple
+  faKey = faKey
+  faEye = faEye
+
+  temperatureData: AgentStats[] = []
+  gpuUtilData: AgentStats[] = []
+  cpuUtilData: AgentStats[] = []
+
+  assignedTaskForm!: AssignedTaskFormModel
+  form!: AgentFormModel
+
+  assignTasks: Task[] = []
+  users: User[] = []
+
+  assignedTaskId: number
+
+  chunks: Chunk[]
+
+  timespent: number
+
+  private maxResults = environment.config.prodApiMaxResults
 
   constructor(
-    private uiService: UIConfigService,
-    private route:ActivatedRoute,
+    private route: ActivatedRoute,
     private gs: GlobalService,
-    private router: Router
-  ) { }
-
-  updateAssignForm: FormGroup;
-  updateForm: FormGroup;
-  assignTasks: any = [];
-  showagent: any = [];
-  groups: any = [];
-  users: any = [];
-  assignNew: any;
-  assignId: any;
-
-  @ViewChild(DataTableDirective)
-  dtElement: DataTableDirective;
-
-  dtTrigger: Subject<any> = new Subject<any>();
-  dtOptions: any = {};
+    private router: Router,
+    private fb: FormBuilder,
+  ) {
+    this.setupForm()
+  }
 
   ngOnInit(): void {
-
-    this.route.params
-    .subscribe(
-      (params: Params) => {
-        this.editedAgentIndex = +params['id'];
-        this.editMode = params['id'] != null;
-        this.initForm();
-        this.assignChunksInit(this.editedAgentIndex);
-      }
-    );
-
-    this.updateForm = new FormGroup({
-      'isActive': new FormControl(''),
-      'userId': new FormControl({value: '', disabled: true}),
-      'agentName': new FormControl(''),
-      'token': new FormControl({value: '', disabled: true}),
-      'cpuOnly': new FormControl(),
-      'cmdPars': new FormControl(''),
-      'ignoreErrors': new FormControl(''),
-      'isTrusted': new FormControl('')
-    });
-
-    this.updateAssignForm = new FormGroup({
-      'taskId': new FormControl(''),
-    });
-
-    const id = +this.route.snapshot.params['id'];
-    this.gs.get(SERV.AGENTS,id,{'expand':'agentstats,accessGroups'}).subscribe((agent: any) => {
-      this.showagent = agent;
-      this.groups = agent.accessGroups;
-      this.agentStats(agent.agentstats);
-    });
-
-    // Get Task for Assigment
-    this.gs.getAll(SERV.TASKS, {'maxResults': this.maxResults, 'filter': 'isArchived=false'}).subscribe((tasks: any) => {
-      this.assignTasks = tasks.values.filter(u=> u.keyspaceProgress < u.keyspace || Number(u.keyspaceProgress) === 0 ); //Remove completed tasks
-    });
-
-    this.gs.getAll(SERV.USERS, {'maxResults': this.maxResults}).subscribe((user: any) => {
-      this.users = user.values;
-    });
-
+    this.subscriptions.push(this.route.data.subscribe(({ agent }) => {
+      this.agent = agent
+      this.updateForm()
+      this.loadAllTasks()
+      this.loadAssignedTasks()
+      this.setAgentStats()
+      this.loadChunks()
+      this.loadUsers()
+    }))
   }
 
-  timespent: number;
-  getchunks: any;
-
-  timeCalc(chunks){
-    const tspent = [];
-    for(let i=0; i < chunks.length; i++){
-      tspent.push(Math.max(chunks[i].solveTime, chunks[i].dispatchTime)-chunks[i].dispatchTime);
+  ngOnDestroy(): void {
+    for (const sub of this.subscriptions) {
+      sub.unsubscribe()
     }
-    this.timespent = tspent.reduce((a, i) => a + i);
   }
 
-  assignChunksInit(id: number){
-    const params = {'maxResults': 999999};
-    this.gs.getAll(SERV.CHUNKS,params).subscribe((c: any)=>{
-      const getchunks = c.values.filter(u=> u.agentId == id);
-      this.gs.getAll(SERV.TASKS,params).subscribe((t: any)=>{
-        this.getchunks = getchunks.map(mainObject => {
-          const matchObjectAgents = t.values.find(e => e.taskId === mainObject.taskId)
-          return { ...mainObject, ...matchObjectAgents}
+  setupForm(): void {
+    this.form = this.fb.group({
+      isActive: [false, Validators.required],
+      userId: [0],
+      agentName: ['', Validators.required],
+      token: [''],
+      cpuOnly: [0],
+      cmdPars: [''],
+      ignoreErrors: [0],
+      isTrusted: [false],
+    })
+    this.assignedTaskForm = this.fb.group({
+      taskId: [0]
+    })
+  }
+
+  loadUsers(): void {
+    const params = { 'maxResults': this.maxResults }
+    this.subscriptions.push(this.gs.getAll(SERV.USERS, params).subscribe((response: ListResponseWrapper<User>) => {
+      this.users = response.values
+    }))
+  }
+
+  loadAllTasks(): void {
+    const params = { 'maxResults': this.maxResults, 'filter': 'isArchived=false' }
+    this.subscriptions.push(this.gs.getAll(SERV.TASKS, params).subscribe((response: ListResponseWrapper<Task>) => {
+      this.assignTasks = response.values.filter(task => task.keyspaceProgress < task.keyspace || Number(task.keyspaceProgress) === 0) //Remove completed tasks
+    }))
+  }
+
+  calculateTimeSpent(chunks: Chunk[]): void {
+    const times = []
+    if (chunks.length) {
+      for (let i = 0; i < chunks.length; i++) {
+        times.push(Math.max(chunks[i].solveTime, chunks[i].dispatchTime) - chunks[i].dispatchTime)
+      }
+      this.timespent = times.reduce((a, i) => a + i)
+    }
+  }
+
+  loadChunks(): void {
+    const params = { 'maxResults': 999999 }
+
+    const chunks$ = this.gs.getAll(SERV.CHUNKS, params) // TODO: Expand task in backend
+    const tasks$ = this.gs.getAll(SERV.TASKS, params)
+
+    this.subscriptions.push(forkJoin([chunks$, tasks$]).subscribe(([c, t]: [ListResponseWrapper<Chunk>, ListResponseWrapper<Task>]) => {
+      const assignedChunks = c.values.filter((chunk: Chunk) => chunk.agentId == this.agent._id)
+      this.chunks = assignedChunks.map((chunk: Chunk) => {
+        chunk.task = t.values.find((e: Task) => e.taskId === chunk.taskId)
+
+        return chunk;
+      })
+
+      this.calculateTimeSpent(this.chunks)
+    }))
+  }
+
+
+  getChunks(dataTablesSettings: any, callback: any, gs: GlobalService): void {
+    console.log('tjo')
+
+    const params = { 'maxResults': 999999 }
+
+    const chunks$ = gs.getAll(SERV.CHUNKS, params) // TODO: Expand task in backend
+    const tasks$ = gs.getAll(SERV.TASKS, params)
+
+    forkJoin([chunks$, tasks$]).subscribe(([c, t]: [ListResponseWrapper<Chunk>, ListResponseWrapper<Task>]) => {
+      const assignedChunks = c.values.filter((chunk: Chunk) => chunk.agentId == this.agent._id)
+      assignedChunks.map((chunk: Chunk) => {
+        chunk.task = t.values.find((e: Task) => e.taskId === chunk.taskId)
+
+        return chunk;
+      })
+      callback({
+        recordsTotal: assignedChunks.length,
+        recordsFiltered: assignedChunks.length,
+        data: assignedChunks
+      })
+    })
+  }
+
+
+  onSubmit() {
+    if (this.form.valid) {
+      this.subscriptions.push(this.gs.update(SERV.AGENTS, this.agent._id, this.form.value).subscribe(() => {
+        this.assignOrUnassignTask()
+        Swal.fire({
+          position: 'top-end',
+          backdrop: false,
+          icon: 'success',
+          title: "Saved",
+          showConfirmButton: false,
+          timer: 1500
         })
-      this.timeCalc(this.getchunks);
-      this.dtTrigger.next(void 0);
-      })
-    });
+        this.form.reset() // success, we reset form
+        this.router.navigate(['agents/show-agents'])
+      }))
+    }
+  }
 
-    const self = this;
-    this.dtOptions = {
-      dom: 'Bfrtip',
-      scrollY: "700px",
-      scrollX: true,
-      lengthMenu: [
-        [10, 25, 50, 100, 250, -1],
-        [10, 25, 50, 100, 250, 'All']
-      ],
-      pageLength: 25,
-      scrollCollapse: true,
-      paging: false,
-      destroy: true,
-      buttons: {
-          dom: {
-            button: {
-              className: 'dt-button buttons-collection btn btn-sm-dt btn-outline-gray-600-dt',
-            }
-          },
-      buttons:[
-        {
-          text: '↻',
-          autoClose: true,
-          action: function (e, dt, node, config) {
-            self.onRefresh();
-          }
-        },
-        {
-          extend: 'colvis',
-          text: 'Column View',
-          columns: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-        }
-      ]
+  assignOrUnassignTask(): void {
+    const selectedTaskId = this.assignedTaskForm.get('taskId').value
+    if (selectedTaskId) {
+      if (this.hasAssignedTask && selectedTaskId !== this.assignedTaskId) {
+        this.unassignTask()
       }
+      this.assignTask(selectedTaskId)
+    } else if (selectedTaskId === 0 && this.hasAssignedTask) {
+      this.unassignTask()
     }
   }
 
-  onRefresh(){
-    this.ngOnInit();
-    this.rerender();  // rerender datatables
+  updateForm() {
+    this.form.patchValue({
+      'isActive': this.agent.isActive,
+      'userId': this.agent.userId,
+      'agentName': this.agent.agentName,
+      'token': this.agent.token,
+      'cpuOnly': this.agent.cpuOnly,
+      'cmdPars': this.agent.cmdPars,
+      'ignoreErrors': this.agent.ignoreErrors,
+      'isTrusted': this.agent.isTrusted
+    })
+    this.assignedTaskForm.patchValue({
+      'taskId': this.assignedTaskId || 0
+    })
   }
 
-  rerender(): void {
-    this.dtElement.dtInstance.then((dtInstance: DataTables.Api) => {
-      // Destroy the table first
-      dtInstance.destroy();
-      // Call the dtTrigger to rerender again
-      setTimeout(() => {
-        this.dtTrigger['new'].next();
-      });
-    });
+  loadAssignedTasks(): void {
+    const params = { 'filter': `agentId=${this.agent._id}` }
+    this.subscriptions.push(this.gs.getAll(SERV.AGENT_ASSIGN, params).subscribe((response: ListResponseWrapper<any>) => {
+      if (response.values.length) {
+        this.assignedTaskId = response.values[0]['assignmentId']
+        this.assignedTaskForm.patchValue({
+          taskId: response.values[0]['taskId'],
+        })
+      }
+    }))
   }
 
-  onSubmit(){
-    if (this.updateForm.valid) {
-      this.onUpdateAssign(this.updateAssignForm.value);
-      this.gs.update(SERV.AGENTS,this.editedAgentIndex,this.updateForm.value).subscribe(() => {
-          Swal.fire({
-            position: 'top-end',
-            backdrop: false,
-            icon: 'success',
-            title: "Saved",
-            showConfirmButton: false,
-            timer: 1500
-          })
-          this.updateForm.reset(); // success, we reset form
-          this.router.navigate(['agents/show-agents']);
-      });
+  get hasAssignedTask(): boolean {
+    return this.assignedTaskId !== undefined
+  }
+
+  assignTask(selectedTaskId: number): void {
+    if (selectedTaskId) {
+      const params = { agentId: this.agent._id, taskId: selectedTaskId }
+      this.subscriptions.push(this.gs.create(SERV.AGENT_ASSIGN, params).subscribe(() => {
+        this.assignedTaskId = selectedTaskId
+      }))
     }
   }
 
-  onUpdateAssign(val: any){
-    const id = Number(val['taskId']);
-    if(id){
-        const payload = {"taskId": Number(val['taskId']), "agentId": this.editedAgentIndex};
-        this.gs.create(SERV.AGENT_ASSIGN,payload).subscribe();
+  unassignTask(): void {
+    this.subscriptions.push(this.gs.delete(SERV.AGENT_ASSIGN, this.assignedTaskId).subscribe(() => {
+      this.assignedTaskId = undefined
+    }))
+  }
+
+  setAgentStats(): void {
+    this.temperatureData = this.agent.agentstats.filter(u => u.statType == ASC.GPU_TEMP)
+    this.gpuUtilData = this.agent.agentstats.filter(u => u.statType == ASC.GPU_UTIL)
+    this.cpuUtilData = this.agent.agentstats.filter(u => u.statType == ASC.CPU_UTIL)
+  }
+
+  formIsInvalid(): boolean {
+    if (!this.form.valid) {
+      return true
     }
-    if(id === 0){
-      this.gs.delete(SERV.AGENT_ASSIGN,this.assignId).subscribe();
-    }
-  }
 
-  private initForm() {
-    if (this.editMode) {
-      this.gs.get(SERV.AGENTS,this.editedAgentIndex).subscribe((result)=>{
-      this.updateForm = new FormGroup({
-        'isActive': new FormControl(result['isActive'], [Validators.required]),
-        'userId': new FormControl(result['userId']),
-        'agentName': new FormControl(result['agentName'], [Validators.required]),
-        'token': new FormControl(result['token']),
-        'cpuOnly': new FormControl(result['cpuOnly']),
-        'cmdPars': new FormControl(result['cmdPars']),
-        'ignoreErrors': new FormControl(result['ignoreErrors']),
-        'isTrusted': new FormControl(result['isTrusted'])
-      });
-    });
-    this.gs.getAll(SERV.AGENT_ASSIGN, {'filter':'agentId='+this.editedAgentIndex+''}).subscribe((assign: any) => {
-      this.assignNew = assign?.values[0]['taskId'] ? true: false;
-      this.assignId = assign?.values[0]['assignmentId'];
-      this.updateAssignForm = new FormGroup({
-          'taskId': new FormControl(assign?.values[0]['taskId']),
-        });
-    });
-   }
-  }
-
-  // //
-  //  GRAPHS SECTION
-  // //
-
-  agentStats(obj: any){
-    this.getGraph(obj.filter(u=> u.statType == ASC.GPU_TEMP),ASC.GPU_TEMP,'tempgraph'); // filter Device Temperature
-    this.getGraph(obj.filter(u=> u.statType == ASC.GPU_UTIL),ASC.GPU_UTIL,'devicegraph'); // filter Device Utilization
-    this.getGraph(obj.filter(u=> u.statType == ASC.CPU_UTIL),ASC.CPU_UTIL,'cpugraph'); // filter CPU utilization
-  }
-
-  // Temperature Graph
-getGraph(obj: object, status: number, name: string){
-
-  echarts.use([
-    TitleComponent,
-    ToolboxComponent,
-    TooltipComponent,
-    GridComponent,
-    LegendComponent,
-    MarkLineComponent,
-    MarkPointComponent,
-    LineChart,
-    CanvasRenderer,
-    UniversalTransition
-  ]);
-
-  type EChartsOption = echarts.ComposeOption<
-  | TitleComponentOption
-  | ToolboxComponentOption
-  | TooltipComponentOption
-  | GridComponentOption
-  | MarkLineComponentOption
- >;
-
-  let templabel = '';
-
-  if(ASC.GPU_TEMP === status){
-    if(this.getTemp2() > 100){ templabel = '°F'}else{ templabel = '°C'}
-  }
-  if(ASC.GPU_UTIL === status){
-    templabel = '%';
-  }
-  if(ASC.CPU_UTIL === status){
-    templabel = '%'
-  }
-
-  // console.log(this.getTemp1());  //Min temp
-  // console.log(this.getTemp2());  //Max temp
-
-  const data:any = obj;
-  const arr = [];
-  const max = [];
-  const devlabels = [];
-  const result:any = obj;
-
-  for(let i=0; i < result.length; i++){
-    let val = result[i].value;
-    for(let i=0; i < val.length; i++){
-      const iso = this.transDate(result[i]['time']);
-      arr.push({ 'time': iso, 'value': val[i], 'device': i});
-      max.push(result[i]['time']);
-      devlabels.push('Device '+i+'');
-    }
-  }
-
-  const grouped = [];
-  arr.forEach(function (a) {
-    grouped[a.device] = grouped[a.device] || [];
-    grouped[a.device].push({ time: a.time, value: a.value });
-  });
-
-  let labels = [...new Set(devlabels)];
-
-  const startdate =  Math.max(...max);
-  const datelabel = this.transDate(startdate);
-  const xAxis = this.generateIntervalsOf(1,+startdate-500,+startdate);
-
-  const chartDom = document.getElementById(name);
-  const myChart = echarts.init(chartDom);
-  let option: EChartsOption;
-
-  const seriesData= [];
-  for(let i=0; i < grouped.length; i++){
-    seriesData.push({
-      name: 'Device '+i+'',
-      type: 'line',
-      data: grouped[i],
-      markLine: {
-        data: [{ type: 'average', name: 'Avg' }],
-        symbol:['none', 'none'],
-    }})
-  }
-
-  const self = this;
-  option = {
-    tooltip: {
-      position: 'top',
-    },
-    legend: {
-      data: labels
-    },
-    toolbox: {
-      show: true,
-      feature: {
-        dataZoom: {
-          yAxisIndex: 'none'
-        },
-        dataView: { readOnly: false },
-        restore: {},
-        saveAsImage: {
-          name: "Device Temperature"
+    if (this.form.get('userId').value === this.agent.userId &&
+      this.form.get('agentName').value === this.agent.agentName &&
+      this.form.get('token').value === this.agent.token &&
+      this.form.get('cpuOnly').value === this.agent.cpuOnly &&
+      this.form.get('cmdPars').value === this.agent.cmdPars &&
+      this.form.get('ignoreErrors').value === this.agent.ignoreErrors &&
+      this.form.get('isTrusted').value === this.agent.isTrusted &&
+      this.form.get('isActive').value === this.agent.isActive) {
+      if (this.assignedTaskForm.get('taskId').value === 0) {
+        if (this.assignedTaskId === undefined) {
+          return true
+        }
+      } else {
+        if (this.assignedTaskForm.get('taskId').value === this.assignedTaskId) {
+          return true
         }
       }
-    },
-    useUTC: true,
-    xAxis: {
-      data: xAxis.map(function (item: any[] | any) {
-        return self.transDate(item);
-      })
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: {
-        formatter: '{value} '+templabel+''
-      }
-    },
-    series: seriesData
-  };
-  option && myChart.setOption(option);
- }
+    }
 
-getTemp1(){  // Temperature Config Setting
-  return this.uiService.getUIsettings('agentTempThreshold1').value;
- }
-
-getTemp2(){  // Temperature 2 Config Setting
-  return this.uiService.getUIsettings('agentTempThreshold2').value;
-}
-
-transDate(dt){
-  const date:any = new Date(dt* 1000);
-  return date.getUTCDate()+'-'+this.leading_zeros((date.getUTCMonth() + 1))+'-'+date.getUTCFullYear()+','+this.leading_zeros(date.getUTCHours())+':'+this.leading_zeros(date.getUTCMinutes())+':'+this.leading_zeros(date.getUTCSeconds());
- }
-
-leading_zeros(dt){
-return (dt < 10 ? '0' : '') + dt;
-}
-
-generateIntervalsOf(interval, start, end) {
-  const result = [];
-  let current = start;
-
-  while (current < end) {
-    result.push(current);
-    current += interval;
+    return false
   }
-
-  return result;
-}
-
-
 }

@@ -1,0 +1,8 @@
+<div class="row">
+  <agent-status-param *ngFor="let msg of messages" [status]="msg.status">
+    {{ msg.message }}
+  </agent-status-param>
+  <p>
+    {{ infoMessage }}
+  </p>
+</div>
