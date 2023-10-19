@@ -24,9 +24,10 @@ import { ComponentsModule } from "../shared/components.module";
 import { TasksRoutingModule } from "./tasks-routing.module";
 import { ChunksComponent } from "./chunks/chunks.component";
 import { PipesModule } from "../shared/pipes.module";
+import { CoreComponentsModule } from "../core/_components/core-components.module";
 
 @NgModule({
-  declarations:[
+  declarations: [
     EditPreconfiguredTasksComponent,
     NewPreconfiguredTasksComponent,
     PreconfiguredTasksComponent,
@@ -43,7 +44,8 @@ import { PipesModule } from "../shared/pipes.module";
     WrbulkComponent,
     MasksComponent
   ],
-  imports:[
+  imports: [
+    CoreComponentsModule,
     ReactiveFormsModule,
     TasksRoutingModule,
     FontAwesomeModule,
@@ -54,10 +56,10 @@ import { PipesModule } from "../shared/pipes.module";
     PipesModule,
     FormsModule,
     NgbModule
- ],
- exports: [
-  ModalPretasksComponent,
-  ModalSubtasksComponent
- ]
+  ],
+  exports: [
+    ModalPretasksComponent,
+    ModalSubtasksComponent
+  ]
 })
-export class TasksModule {}
+export class TasksModule { }
