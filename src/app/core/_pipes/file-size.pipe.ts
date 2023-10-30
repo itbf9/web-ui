@@ -2,6 +2,7 @@ import {
   PipeTransform,
   Pipe
 } from '@angular/core';
+import { formatFileSize } from 'src/app/shared/utils/util';
 
 /**
  * Transform bytes to a readable unit adding abbreviation units or long form
@@ -17,32 +18,14 @@ import {
  * @returns 1B
 **/
 
-const FILE_SIZE_UNITS = ['B ', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
-const FILE_SIZE_UNITS_LONG = ['Bytes', 'Kilobytes', 'Megabytes', 'Gigabytes', 'Pettabytes', 'Exabytes', 'Zettabytes', 'Yottabytes'];
 
 @Pipe({
   name: 'fileSize'
 })
 export class FileSizePipe implements PipeTransform {
 
-  transform(sizeB: number, longForm: boolean, BASE_SIZE = 1024, THRESHOLD = 1024): string {
-    const units = longForm
-      ? FILE_SIZE_UNITS_LONG
-      : FILE_SIZE_UNITS;
-    let result: number | string = 0;
-
-    if (sizeB < 1 ) { return result = '0 B'; }
-
-    const scale = sizeB > THRESHOLD ? (sizeB / THRESHOLD):sizeB; //Change scale. ie. 113.44MB instead of 0.13GB
-
-    let power = (Math.round(Math.log(scale) / Math.log(BASE_SIZE)));
-    power = Math.min(power, units.length - 1);
-
-    const size = (sizeB) / Math.pow(BASE_SIZE, power); // size in new units
-    const formattedSize = Math.round(size * 100) / 100; // keep up to 2 decimals
-    const unit = units[power];
-
-    return `${formattedSize} ${unit}`;
+  transform(sizeB: number, longForm: boolean, baseSize = 1024, threshold = 1024): string {
+    return formatFileSize(sizeB, longForm ? 'long' : 'short', baseSize, threshold)
   }
 
 }
