@@ -1,385 +1,361 @@
-import { AfterViewInit, Component, EventEmitter, Input, OnDestroy, OnInit, Output, Renderer2, ViewChild } from "@angular/core";
-import { Subject, Subscription, forkJoin } from "rxjs";
-import { GlobalService } from "../../_services/main.service";
-import { SERV } from "../../_services/main.config";
-import { ListResponseWrapper } from "../../_models/response";
-import { Chunk } from "../../_models/chunk";
-import { Task } from "../../_models/task";
-import { Router } from "@angular/router";
-import { CookieStorageService } from "../../_services/storage/cookie-storage.service";
-import { formatDate, formatSeconds } from "src/app/shared/utils/datetime";
-import { chunkStates } from "../../_constants/chunks.config";
-import { DataTableDirective } from "angular-datatables";
+import { Component, OnDestroy, OnInit } from "@angular/core";
+import { formatDate } from "src/app/shared/utils/datetime";
 import { Agent } from "../../_models/agents";
-import { User } from "../../_models/user.model";
+import { HTTableColumn } from "../ht-table/ht-table.models";
+import { AgentsDataSource } from "../../_datasources/agents.datasource";
+import { SafeHtml } from "@angular/platform-browser";
+import { Cacheable } from "../../_decorators/cacheable";
+import { AgentsTableColumnLabel } from "./agents-table.constants";
+import { ChunkData } from "../../_models/chunk";
+import { ActionMenuEvent } from "../../_models/action-menu.model";
+import { BulkActionMenuAction } from "../menus/bulk-action-menu/bulk-action-menu.constants";
+import { RowActionMenuAction } from "../menus/row-action-menu/row-action-menu.constants";
+import { TableDialogComponent } from "../table-dialog/table-dialog.component";
+import { DialogData } from "../table-dialog/table-dialog.model";
+import { SERV } from "../../_services/main.config";
+import { catchError, forkJoin } from "rxjs";
+import { BaseTableComponent } from "../base-table/base-table.component";
+
 
 @Component({
   selector: 'agents-table',
   templateUrl: './agents-table.component.html'
 })
 
-export class AgentsTableComponent implements AfterViewInit, OnInit, OnDestroy {
+export class AgentsTableComponent extends BaseTableComponent implements OnInit, OnDestroy {
 
-  private subscriptions: Subscription[] = []
+  tableColumns: HTTableColumn[] = []
+  dataSource: AgentsDataSource;
+  chunkData: { [key: number]: ChunkData } = {}
 
-  // Output event to trigger a refresh action.
-  @Output() refresh: EventEmitter<string> = new EventEmitter();
-  // Reference to the DataTableDirective element.
-  @ViewChild(DataTableDirective, { static: false }) dtElement: DataTableDirective;
-  // Subject to trigger DataTable rendering.
-  dtTrigger: Subject<any> = new Subject<any>()
-  // Configuration options for DataTable.
-  dtOptions = {};
-  // Date format for rendering dates.
-  dateFormat: string
-
-  constructor(
-    private gs: GlobalService,
-    private renderer: Renderer2,
-    private router: Router,
-    private cookieStorage: CookieStorageService<string>
-  ) { }
-
-  /**
-   * Unsubscribe from subscriptions and destroy the DataTable when the component is destroyed.
-   */
   ngOnDestroy(): void {
-    this.unsubscribeFromSubscriptions()
-    this.destroyDataTable()
-  }
-
-  /**
-   * Add a click event listener and trigger DataTable rendering after view initialization.
-   */
-  ngAfterViewInit(): void {
-    this.addClickEventListeners()
-    this.dtTrigger.next(void 0);
-  }
-
-  /**
-   * Initialize the component, set the date format, and configure DataTable options.
-   */
-  ngOnInit(): void {
-    this.dateFormat = this.getDateFormat()
-    this.dtOptions = this.getDTOptions()
-  }
-
-  /**
-   * Unsubscribe from the current DataTable subscriptions.
-   */
-  private unsubscribeFromSubscriptions(): void {
-    this.dtTrigger.unsubscribe();
     for (const sub of this.subscriptions) {
-      sub.unsubscribe();
+      sub.unsubscribe()
     }
   }
 
-  /**
-   * Add a click event listener to handle navigation when a link is clicked.
-   */
-  private addClickEventListeners(): void {
-    this.renderer.listen('document', 'click', (event) => {
-      // Task link
-      if (event.target.hasAttribute("data-view-task-id")) {
-        this.router.navigate([`/tasks/show-tasks/${event.target.getAttribute("data-view-task-id")}/edit`]);
-      }
-      // Hashlist link
-      if (event.target.hasAttribute("data-view-hashes-task-id")) {
-        this.router.navigate([`/hashlists/hashes/tasks/${event.target.getAttribute("data-view-hashes-task-id")}`]);
-      }
-      // Agent link
-      if (event.target.hasAttribute("data-view-agent-id")) {
-        this.router.navigate([`/agents/show-agents/${event.target.getAttribute("data-view-agent-id")}/edit`]);
-      }
-      return false
-    });
+  ngOnInit(): void {
+    this.tableColumns = this.getColumns()
+    this.dataSource = new AgentsDataSource(this.gs, this.uiService);
+    this.dataSource.setColumns(this.tableColumns);
+    this.dataSource.loadAll();
   }
 
-  rerender(): void {
-    this.rerenderDataTable()
+  filter(item: Agent, filterValue: string): boolean {
+    if (item.agentName.toLowerCase().includes(filterValue) ||
+      item.clientSignature.toLowerCase().includes(filterValue) ||
+      item.devices.toLowerCase().includes(filterValue)) {
+      return true
+    }
+
+    return false;
   }
 
-  /**
-   * Rerender the DataTable by destroying it and triggering a new rendering event.
-   */
-  private rerenderDataTable(): void {
-    this.dtElement.dtInstance.then((dtInstance: DataTables.Api) => {
-      dtInstance.destroy();
-      this.dtTrigger.next(void 0);
-    });
-  }
-
-  /**
-   * Destroy the DataTable instance when no longer needed.
-   */
-  private destroyDataTable(): void {
-    this.dtElement.dtInstance.then((dtInstance: DataTables.Api) => {
-      dtInstance.destroy();
-    });
-  }
-
-  /**
-   * Get DataTable configuration options, including sorting, searching, and column settings.
-   */
-  getDTOptions(): any {
-    const dataTableOptions = {
-      //serverSide: true,
-      ajax: (_data, callback, settings) => {
-        this.getAgents(settings, callback);
+  getColumns(): HTTableColumn[] {
+    const tableColumns = [
+      {
+        name: AgentsTableColumnLabel.ID,
+        dataKey: '_id',
+        isSortable: true,
       },
-      dom: 'Bfrtip',
-      scrollY: "700px",
-      scrollX: true,
-      lengthMenu: [
-        [10, 25, 50, 100, 250, -1],
-        [10, 25, 50, 100, 250, 'All']
-      ],
-      pageLength: 25,
-      scrollCollapse: true,
-      paging: false,
-      stateSave: true,
-      select: {
-        style: 'multi',
+      {
+        name: AgentsTableColumnLabel.STATUS,
+        dataKey: 'status',
+        render: (agent: Agent) => this.renderStatus(agent),
+        isSortable: true,
       },
-      destroy: true,
-      buttons: {
-        dom: {
-          button: {
-            className: 'dt-button buttons-collection btn btn-sm-dt btn-outline-gray-600-dt',
-          }
-        },
-        buttons: [
-          {
-            text: '↻',
-            autoClose: true,
-            action: () => {
-              this.rerender()
-              this.refresh.emit()
-            }
-          },
-          'colvis',
-          {
-            extend: 'collection',
-            text: 'Export',
-            buttons: [
-              {
-                extend: 'excelHtml5',
-              },
-              {
-                extend: 'print',
-                customize: function (win) {
-                  $(win.document.body)
-                    .css('font-size', '10pt')
-                  $(win.document.body).find('table')
-                    .addClass('compact')
-                    .css('font-size', 'inherit');
-                }
-              },
-              {
-                extend: 'csvHtml5',
-                exportOptions: { modifier: { selected: true } },
-                select: true,
-                customize: function (dt, csv) {
-                  let data = "";
-                  for (let i = 0; i < dt.length; i++) {
-                    data = "Agents\n\n" + dt;
-                  }
-                  return data;
-                }
-              },
-              {
-                extend: 'copy',
-              }
-            ]
-          },
-          {
-            extend: "pageLength",
-            className: "btn-sm"
-          },
-        ]
+      {
+        name: AgentsTableColumnLabel.NAME,
+        dataKey: 'agentName',
+        routerLink: (agent: Agent) => ['/agents', 'show-agents', agent._id, 'edit'],
+        isSortable: true,
       },
+      {
+        name: AgentsTableColumnLabel.USER,
+        dataKey: 'userId',
+        render: (agent: Agent) => this.renderOwner(agent),
+        routerLink: (agent: Agent) => agent.userId ? ['/users', agent.userId, 'edit'] : [],
+        isSortable: true,
+      },
+      {
+        name: AgentsTableColumnLabel.CLIENT,
+        dataKey: 'clientSignature',
+        render: (agent: Agent) => this.renderClient(agent),
+        isSortable: true,
+      },
+      {
+        name: AgentsTableColumnLabel.CURRENT_TASK,
+        dataKey: 'taskId',
+        render: (agent: Agent) => this.renderCurrentTask(agent),
+        isSortable: true,
+      },
+      {
+        name: AgentsTableColumnLabel.TASK_SPEED,
+        dataKey: 'taskId',
+        async: (agent: Agent) => this.renderCurrentSpeed(agent),
+        isSortable: false,
+      },
+      {
+        name: AgentsTableColumnLabel.CURRENT_CHUNK,
+        dataKey: 'taskId',
+        render: (agent: Agent) => this.renderCurrentChunk(agent),
+        isSortable: true,
+      },
+      {
+        name: AgentsTableColumnLabel.GPUS_CPUS,
+        dataKey: 'devices',
+        isSortable: true,
+      },
+      {
+        name: AgentsTableColumnLabel.LAST_ACTIVITY,
+        dataKey: 'lastTime',
+        render: (agent: Agent) => this.renderLastActivity(agent),
+        isSortable: true,
+      },
+      {
+        name: AgentsTableColumnLabel.ACCESS_GROUP,
+        dataKey: 'accessGroupId',
+        render: (agent: Agent) => this.renderAccessGroup(agent),
+        isSortable: true,
+      }
+    ]
 
-      columns: [
-        {
-          title: 'ID',
-          data: '_id',
-        },
-        {
-          title: 'Status',
-          render: this.renderStatus,
-        },
-        {
-          title: 'Name',
-          render: this.renderName,
-        },
-        {
-          title: 'Owner',
-          render: this.renderOwner,
-        },
-        {
-          title: 'Client',
-          render: this.renderClient,
-        },
-        {
-          title: 'GPUs/CPUs',
-          data: 'devices',
-        },
-        {
-          title: 'Info',
-          render: this.renderInfo,
-        },
-        {
-          title: 'Last activity',
-          // Wrap render function to access this context
-          render: (data, type, row) => {
-            return this.renderLastActivity(data, type, row);
-          },
-        },
-        {
-          title: 'Access Group',
-          render: this.renderAccessGroup,
-        },
-        {
-          title: 'Actions',
-          render: this.renderActions,
-        },
-      ],
-    };
-
-    return dataTableOptions;
+    return tableColumns
   }
 
-  /**
-   * Retrieves and processes agent data from the server.
-   * 
-   * @param dataTablesSettings The settings for DataTables.
-   * @param callback The callback function to update the DataTable.
-   */
-  getAgents(dataTablesSettings: any, callback: any): void {
-    const agentParams = { maxResults: 999999, expand: 'accessGroups' }
-    const userParams = { maxResults: 999999 }
 
-    const agents$ = this.gs.getAll(SERV.AGENTS, agentParams)
-    const users$ = this.gs.getAll(SERV.USERS, userParams)
+  openDialog(data: DialogData<Agent>) {
+    const dialogRef = this.dialog.open(TableDialogComponent, {
+      data: data,
+      width: '450px',
+    });
 
-    this.subscriptions.push(forkJoin([agents$, users$]).subscribe(([a, u]: [ListResponseWrapper<Agent>, ListResponseWrapper<User>]) => {
-      const agents: Agent[] = a.values
-      const users: User[] = u.values
-
-      agents.map((agent: Agent) => {
-        agent.user = users.find((e: User) => e._id === agent.userId)
-
-        return agent;
-      })
-
-      callback({
-        recordsTotal: agents.length,
-        recordsFiltered: agents.length,
-        data: agents
-      })
+    this.subscriptions.push(dialogRef.afterClosed().subscribe(result => {
+      if (result && result.action) {
+        switch (result.action) {
+          case RowActionMenuAction.DELETE:
+            this.rowActionDelete(result.data);
+            break;
+          case BulkActionMenuAction.ACTIVATE:
+            this.bulkActionActivate(result.data, true);
+            break;
+          case BulkActionMenuAction.DEACTIVATE:
+            this.bulkActionActivate(result.data, false);
+            break;
+          case BulkActionMenuAction.DELETE:
+            this.bulkActionDelete(result.data);
+            break;
+        }
+      }
     }));
-  }
-
-  /**
-   * Retrieves the date format for rendering timestamps.
-   * @todo Change to localstorage
-   * @returns The date format string.
-   */
-  getDateFormat(): string {
-    const fmt = this.cookieStorage.getItem('localtimefmt')
-
-    return fmt ? fmt : 'dd/MM/yyyy h:mm:ss'
   }
 
   // --- Render functions ---
 
 
-  renderName(_data: any, type: string, agent: Agent): string {
-    if (type === 'display') {
-      const agentName = agent.agentName?.length > 40
-        ? `${agent.agentName.substring(40)}...`
-        : agent.agentName
-      const isTrusted = agent.isTrusted
-        ? '<span><fa-icon icon="faLock" aria-hidden="true" ngbTooltip="Trust agent with secret data" /></span>'
-        : ''
+  @Cacheable(['_id', 'agentName', 'isTrusted'])
+  renderName(agent: Agent): SafeHtml {
+    const agentName = agent.agentName?.length > 40
+      ? `${agent.agentName.substring(40)}...`
+      : agent.agentName
+    const isTrusted = agent.isTrusted
+      ? '<span><fa-icon icon="faLock" aria-hidden="true" ngbTooltip="Trust agent with secret data" /></span>'
+      : ''
 
-      return `<a href="#" data-view-agent-id="${agent._id}">${agentName}</a>${isTrusted}`
-    }
-
-    return agent.agentName;
+    return this.sanitize(`<a href="#" data-view-agent-id="${agent._id}">${agentName}</a>${isTrusted}`)
   }
 
-  renderStatus(_data: any, type: string, agent: Agent): string {
-    if (type === 'display') {
-      if (agent.isActive) {
-        return '<span class="badge status-active">Active</span>'
-      } else {
-        return '<span class="badge status-inactive">Inactive</span>'
-      }
-    }
 
-    return `${agent.isActive}`
+  @Cacheable(['_id', 'taskId'])
+  renderCurrentTask(agent: Agent): SafeHtml {
+    let html = '-'
+    if (agent.task) {
+      const taskName = agent.task.taskName?.length > 40
+        ? `${agent.task.taskName.substring(40)}...`
+        : agent.task.taskName
+
+      html = `<a href="#" data-view-task-id="${agent.taskId}">${taskName}</a>`
+    }
+    return this.sanitize(html)
   }
 
-  renderActions(_data: any, type: string, agent: Agent): string {
-    if (type === 'display') {
-      return ''
+  @Cacheable(['_id', 'taskId'])
+  async renderCurrentSpeed(agent: Agent): Promise<SafeHtml> {
+    let html = '-'
+    if (!(agent._id in this.chunkData)) {
+      this.chunkData[agent._id] = await this.dataSource.getChunkData(agent._id);
     }
-
-    return ''
+    if (this.chunkData[agent._id].speed) {
+      html = `${this.chunkData[agent._id].speed} H/s`
+    }
+    return this.sanitize(html)
   }
 
-  renderAccessGroup(_data: any, type: string, agent: Agent): string {
+  @Cacheable(['_id', 'chunk'])
+  renderCurrentChunk(agent: Agent): SafeHtml {
+    let html = '-'
+    if (agent.chunk) {
+      html = `<a href="#" data-view-task-id="${agent.chunk._id}">${agent.chunk._id}</a>`
+    }
+
+    return this.sanitize(html)
+  }
+
+  @Cacheable(['_id', 'isActive'])
+  renderStatus(agent: Agent): SafeHtml {
+    let html: string
+    if (agent.isActive) {
+      html = '<span class="pill pill-active">Active</span>'
+    } else {
+      html = '<span class="pill pill-inactive">Inactive</span>'
+    }
+
+    return this.sanitize(html)
+  }
+
+  @Cacheable(['_id', 'accessGroupId'])
+  renderAccessGroup(agent: Agent): SafeHtml {
     const links: string[] = []
 
-    if (type === 'display') {
-      for (const group of agent.accessGroups) {
-        links.push(`<a href="#" data-view-access-group-id="${group.accessGroupId}">${group.groupName}</a>`)
-        if (agent.accessGroups.length > 1) {
-          links.push('<hr />')
-        }
+    for (const group of agent.accessGroups) {
+      links.push(`<a href="#" data-view-access-group-id="${group.accessGroupId}">${group.groupName}</a>`)
+      if (agent.accessGroups.length > 1) {
+        links.push('<hr />')
       }
-
-      return links.join('\n')
     }
 
-    return ''
+    return this.sanitize(links.join('\n'))
+
   }
 
-  renderOwner(_data: any, type: string, agent: Agent): string {
+  @Cacheable(['_id', 'userId'])
+  renderOwner(agent: Agent): SafeHtml {
     if (agent.user) {
-      if (type === 'display') {
-        return `<a href="#" data-view-user-id="${agent.user._id}">${agent.user.name}</a>`
-      }
-
-      return `${agent.user._id}`
+      return this.sanitize(agent.user.name)
     }
     return ''
   }
 
-  renderClient(_data: any, type: string, agent: Agent): string {
-    if (type === 'display') {
-      if (agent.clientSignature) {
-        return agent.clientSignature
-      }
+  @Cacheable(['_id', 'clientSignature'])
+  renderClient(agent: Agent): SafeHtml {
+    if (agent.clientSignature) {
+      return agent.clientSignature
     }
-
     return ''
   }
 
 
-  renderInfo(_data: any, type: string, agent: Agent): string {
-    return ''
+  @Cacheable(['_id', 'lastTime'])
+  renderLastActivity(agent: Agent): SafeHtml {
+    const formattedDate = formatDate(agent.lastTime, this.dateFormat)
+    const data = `<code>${agent.lastAct}</code> at<br>${formattedDate}<br>IP:<code>${agent.lastIp}</code>`
+
+
+    return this.sanitize(data)
   }
 
 
-  renderLastActivity(_data: any, type: string, agent: Agent): string {
-    if (type === 'display') {
-      const formattedDate = formatDate(agent.lastTime, this.dateFormat)
-      return `<code>${agent.lastAct}</code> at<br>${formattedDate}<br>IP:<code>${agent.lastIp}</code>`
+  // --- Action functions ---
+
+
+  rowActionClicked(event: ActionMenuEvent<Agent>): void {
+    switch (event.menuItem.action) {
+      case RowActionMenuAction.EDIT:
+        this.rowActionEdit(event.data);
+        break;
+      case RowActionMenuAction.DELETE:
+        this.openDialog({
+          rows: [event.data],
+          title: `Deleting ${event.data.agentName} ...`,
+          icon: 'warning',
+          body: `Are you sure you want to delete ${event.data.agentName}? Note that this action cannot be undone.`,
+          warn: true,
+          action: event.menuItem.action
+        })
+        break;
     }
-
-    return `${agent.lastTime}`
   }
 
+  bulkActionClicked(event: ActionMenuEvent<Agent[]>): void {
+    switch (event.menuItem.action) {
+      case BulkActionMenuAction.ACTIVATE:
+        this.openDialog({
+          rows: event.data,
+          title: `Activating ${event.data.length} agents ...`,
+          icon: 'info',
+          listAttribute: 'agentName',
+          action: event.menuItem.action
+        })
+        break;
+      case BulkActionMenuAction.DEACTIVATE:
+        this.openDialog({
+          rows: event.data,
+          title: `Deactivating ${event.data.length} agents ...`,
+          icon: 'info',
+          listAttribute: 'agentName',
+          action: event.menuItem.action
+        })
+        break;
+      case BulkActionMenuAction.DELETE:
+        this.openDialog({
+          rows: event.data,
+          title: `Deleting ${event.data.length} agents ...`,
+          icon: 'warning',
+          body: `Are you sure you want to delete the above agents? Note that this action cannot be undone.`,
+          warn: true,
+          listAttribute: 'agentName',
+          action: event.menuItem.action
+        })
+        break;
+    }
+  }
+
+  private bulkActionActivate(agents: Agent[], isActive: boolean): void {
+    const requests = agents.map((agent: Agent) => {
+      return this.gs.update(SERV.AGENTS, agent._id, { isActive: isActive })
+    });
+
+    const action = isActive ? 'activated' : 'deactivated'
+
+    this.subscriptions.push(forkJoin(requests)
+      .pipe(
+        catchError((error) => {
+          console.error('Error during activation:', error);
+          return [];
+        })
+      )
+      .subscribe((results) => {
+        this.snackBar.open(`Successfully ${action} ${results.length} agents!`, 'Close');
+        this.dataSource.reload()
+      }));
+  }
+
+  private bulkActionDelete(agents: Agent[]): void {
+    const requests = agents.map((agent: Agent) => {
+      return this.gs.delete(SERV.AGENTS, agent._id)
+    });
+
+    this.subscriptions.push(forkJoin(requests)
+      .pipe(
+        catchError((error) => {
+          console.error('Error during deletion:', error);
+          return [];
+        })
+      )
+      .subscribe((results) => {
+        this.snackBar.open(`Successfully deleted ${results.length} agents!`, 'Close');
+        this.dataSource.reload()
+      }));
+  }
+
+  private rowActionDelete(agent: Agent): void {
+    this.subscriptions.push(this.gs.delete(SERV.AGENTS, agent._id).subscribe(() => {
+      this.snackBar.open('Successfully deleted agent!', 'Close');
+      this.dataSource.reload()
+    }));
+  }
+
+  private rowActionEdit(agent: Agent): void {
+    this.router.navigate(['agents', 'show-agents', agent._id, 'edit']);
+  }
 }
