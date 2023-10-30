@@ -9,29 +9,41 @@
       </button>
     </div>
     <!-- bulk actions -->
-    <div class="table-action-wrapper">
-      <button mat-button [matMenuTriggerFor]="bulkActionMenu" [disabled]="!hasSelected()">
-        <mat-icon>adjust</mat-icon>
-        Bulk Actions
-      </button>
-      <mat-menu #bulkActionMenu="matMenu">
-        <button mat-menu-item routerLink="agents/show-agents">Delete Agents</button>
-        <button mat-menu-item routerLink="agents/agent-status">Activate Agents</button>
-        <button mat-menu-item routerLink="agents/agent-status">Deactivate Agents</button>
-        <button mat-menu-item routerLink="agents/agent-status">Edit Rack</button>
-      </mat-menu>
+    <div class="table-action-wrapper" *ngIf="isSelectable">
+      <div *ngIf="dataSource.loading$ | async; else dataLoaded">
+        <button mat-button [disabled]="true">
+          <mat-icon>adjust</mat-icon>
+          Bulk Actions
+        </button>
+      </div>
+      <ng-template #dataLoaded>
+        <bulk-action-menu [dataType]="dataType" [data]="dataSource.selection.selected" [disabled]="!hasSelected()"
+          (menuItemClicked)="bulkAction($event)" />
+      </ng-template>
     </div>
     <!-- export -->
-    <div class="table-action-wrapper">
+    <div class="table-action-wrapper" *ngIf="isSelectable">
       <button mat-button [matMenuTriggerFor]="exportMenu" [disabled]="!hasSelected()">
         <mat-icon>file_download</mat-icon>
         Export
       </button>
       <mat-menu #exportMenu="matMenu">
-        <button mat-menu-item routerLink="agents/show-agents">Excel</button>
-        <button mat-menu-item routerLink="agents/agent-status">Print</button>
-        <button mat-menu-item routerLink="agents/agent-status">CSV</button>
-        <button mat-menu-item routerLink="agents/agent-status">Copy</button>
+        <button mat-menu-item>
+          <mat-icon>file_download</mat-icon>
+          Excel
+        </button>
+        <button mat-menu-item>
+          <mat-icon>file_download</mat-icon>
+          CSV
+        </button>
+        <button mat-menu-item>
+          <mat-icon>print</mat-icon>
+          Print
+        </button>
+        <button mat-menu-item>
+          <mat-icon>content_copy</mat-icon>
+          Copy
+        </button>
       </mat-menu>
     </div>
     <!-- columns -->
@@ -42,8 +54,9 @@
       </button>
     </div>
     <!-- filter -->
-    <div class="table-action-wrapper right-aligned" *ngIf="isFilterable">
-      <input class="mat-input" (keyup)="applyFilter()" [(ngModel)]="dataSource.filter" placeholder="filter">
+    <div class="table-action-wrapper right-aligned">
+      <input *ngIf="isFilterable" class="mat-input" (keyup)="applyFilter()" [(ngModel)]="dataSource.filter"
+        placeholder="filter">
     </div>
   </div>
 
@@ -70,7 +83,7 @@
     <ng-container *ngIf="hasRowAction" matColumnDef="rowAction">
       <th mat-header-cell *matHeaderCellDef></th>
       <td mat-cell *matCellDef="let element" id="rowAction">
-        <action-menu [rowData]="element"></action-menu>
+        <row-action-menu [data]="element" (menuItemClicked)="rowAction($event)"></row-action-menu>
       </td>
     </ng-container>
 
@@ -90,14 +103,46 @@
       </ng-template>
       <!-- column data -->
       <td mat-cell *matCellDef="let element" [class.text-right]="tableColumn.position === 'right'">
-        <!-- Check if a render function is defined for the column -->
-        <ng-container *ngIf="tableColumn.render; else defaultRender">
-          <div [innerHtml]="tableColumn.render(element)"></div>
-        </ng-container>
-        <!-- Default rendering if no render function is defined -->
-        <ng-template #defaultRender>
-          {{ element[tableColumn.dataKey] }}
-        </ng-template>
+        <div class="flex-container" [class.truncate]="tableColumn.routerLink">
+          <!-- Check if icon function is defined -->
+          <ng-container *ngIf="tableColumn.icons">
+            <ng-container *ngFor="let icon of tableColumn.icons(element) | async">
+              <mat-icon *ngIf="icon.tooltip; else iconTmpl" [matTooltip]="icon.tooltip"
+                [ngClass]="icon.cls ? icon.cls : ''">{{ icon.name }}</mat-icon>
+              <ng-template #iconTmpl>
+                <mat-icon [ngClass]="icon.cls ? icon.cls : ''">{{ icon.name }}</mat-icon>
+              </ng-template>
+            </ng-container>
+          </ng-container>
+          <a *ngIf="tableColumn.routerLink" [routerLink]="tableColumn.routerLink(element)">
+            <!-- Check if a async function is defined for the column -->
+            <ng-container *ngIf="tableColumn.async">
+              <span [innerHtml]="(tableColumn.async(element) | async) || '-'"></span>
+            </ng-container>
+            <!-- Check if a render function is defined for the column -->
+            <ng-container *ngIf="!tableColumn.async && tableColumn.render">
+              <span [innerHtml]="tableColumn.render(element)"></span>
+            </ng-container>
+            <!-- Default rendering if no render function is defined -->
+            <ng-container *ngIf="!tableColumn.async && !tableColumn.render">
+              {{ element[tableColumn.dataKey] }}
+            </ng-container>
+          </a>
+          <ng-container *ngIf="!tableColumn.routerLink">
+            <!-- Check if a async function is defined for the column -->
+            <ng-container *ngIf="tableColumn.async">
+              <div [innerHtml]="(tableColumn.async(element) | async) || '-'"></div>
+            </ng-container>
+            <!-- Check if a render function is defined for the column -->
+            <ng-container *ngIf="!tableColumn.async && tableColumn.render">
+              <div [innerHtml]="tableColumn.render(element)"></div>
+            </ng-container>
+            <!-- Default rendering if no render function is defined -->
+            <ng-container *ngIf="!tableColumn.async && !tableColumn.render && !tableColumn.icons">
+              {{ element[tableColumn.dataKey] }}
+            </ng-container>
+          </ng-container>
+        </div>
       </td>
 
     </ng-container>
