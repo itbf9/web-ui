@@ -5,6 +5,7 @@ import { MatTableDataSourcePaginator } from "@angular/material/table";
 import { HTTableColumn } from "../_components/ht-table/ht-table.models";
 import { MatSort } from "@angular/material/sort";
 import { SelectionModel } from '@angular/cdk/collections';
+import { UIConfigService } from "../_services/shared/storage.service";
 
 /**
  * BaseDataSource is an abstract class for implementing data sources
@@ -66,7 +67,7 @@ export abstract class BaseDataSource<T, P extends MatTableDataSourcePaginator = 
    */
   public sort: MatSort
 
-  constructor(protected service: GlobalService) {
+  constructor(protected service: GlobalService, protected uiService: UIConfigService) {
   }
 
   /**
@@ -258,6 +259,16 @@ export abstract class BaseDataSource<T, P extends MatTableDataSourcePaginator = 
     // Return to page 1 if using pagination
     if (this.paginator) {
       this.paginator.firstPage();
+    }
+  }
+
+  getFirstRow(): T | undefined {
+    const data = this.dataSubject.value;
+
+    if (data.length > 0) {
+      return data[0];
+    } else {
+      return undefined;
     }
   }
 
