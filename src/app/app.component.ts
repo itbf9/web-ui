@@ -21,6 +21,9 @@ import { ModalDismissReasons, NgbModal } from '@ng-bootstrap/ng-bootstrap';
 import { ThemeService } from './core/_services/shared/theme.service';
 import { Idle, DEFAULT_INTERRUPTSOURCES } from '@ng-idle/core';
 import { Keepalive } from '@ng-idle/keepalive';
+import { LocalStorageService } from './core/_services/storage/local-storage.service';
+import { Layout, UIConfig, uiConfigDefault } from './core/_models/config-ui.model';
+import { UISettingsUtilityClass } from './shared/utils/config';
 
 @Component({
   selector: 'app-root',
@@ -32,14 +35,16 @@ export class AppComponent implements OnInit {
   appTitle = 'Hashtopolis';
   idleState = 'Not Started';
   timedOut = false;
-  lastPing?: Date  = null;
-  timeoutCountdown:number = null;
-  timeoutMax= this.onTimeout();
+  lastPing?: Date = null;
+  timeoutCountdown: number = null;
+  timeoutMax = this.onTimeout();
   idleTime: number = this.onTimeout();
   showingModal = false;
   modalRef = null;
-  screenmode:string = localStorage.getItem('screenmode') || 'true';
+  screenmode: string = localStorage.getItem('screenmode') || 'true';
   theme: string;
+  isLogged: boolean;
+  uiSettings: UISettingsUtilityClass
 
   @HostBinding('class.light-theme')
   public isLightTheme = false;
@@ -59,7 +64,7 @@ export class AppComponent implements OnInit {
   constructor(
     private configService: ConfigService,
     private cookieService: CookieService,
-    private uicService:UIConfigService,
+    private uicService: UIConfigService,
     private checkt: CheckTokenService,
     private authService: AuthService,
     private modalService: NgbModal,
@@ -69,10 +74,11 @@ export class AppComponent implements OnInit {
     private router: Router,
     private meta: Meta,
     private idle: Idle,
+    private storage: LocalStorageService<UIConfig>,
     @Inject(PLATFORM_ID) private platformId: object
-    ){
-      this.setTheme(this.themes.theme);
-      this.router.events
+  ) {
+    this.setTheme(this.themes.theme);
+    this.router.events
       .pipe(filter(e => e instanceof NavigationEnd))
       .subscribe((e: NavigationEnd) => {
         this.currentUrl = e.url;
@@ -82,58 +88,73 @@ export class AppComponent implements OnInit {
         }
       });
 
-      idle.setIdle(this.idleTime);
-      idle.setTimeout(this.timeoutMax);
-      idle.setInterrupts(DEFAULT_INTERRUPTSOURCES);
+    idle.setIdle(this.idleTime);
+    idle.setTimeout(this.timeoutMax);
+    idle.setInterrupts(DEFAULT_INTERRUPTSOURCES);
 
-      idle.onIdleStart.subscribe(() => {
-        idle.clearInterrupts();
-        this.checkLogin();
-        this.idleState = 'You\'ll be logged out in 15 seconds!'
-      });
+    idle.onIdleStart.subscribe(() => {
+      idle.clearInterrupts();
+      this.checkLogin();
+      this.idleState = 'You\'ll be logged out in 15 seconds!'
+    });
 
-      idle.onIdleEnd.subscribe(() => {
-        this.idleState = "NOT_IDLE.";
-        this.modalRef.componentInstance.timedOut = false;
-        this.timeoutCountdown = null;
-        this.reset();
-        this.closeModal();
-      });
+    idle.onIdleEnd.subscribe(() => {
+      this.idleState = "NOT_IDLE.";
+      this.modalRef.componentInstance.timedOut = false;
+      this.timeoutCountdown = null;
+      this.reset();
+      this.closeModal();
+    });
 
-      idle.onTimeout.subscribe(() => {
-        this.idleState = 'TIMED_OUT';
-        this.timedOut = true;
-        this.timeoutCountdown = null;
-        this.modalRef.componentInstance.timedOut = true;
-        this.onLogOut();
-      });
+    idle.onTimeout.subscribe(() => {
+      this.idleState = 'TIMED_OUT';
+      this.timedOut = true;
+      this.timeoutCountdown = null;
+      this.modalRef.componentInstance.timedOut = true;
+      this.onLogOut();
+    });
 
-      idle.onTimeoutWarning.subscribe((countdown) => {
-          if(!this.showingModal && this.idleTime > 1){
-            this.openModal();
-          }
-          this.timeoutCountdown = this.timeoutMax - countdown +1;
-          this.modalRef.componentInstance.timeoutCountdown = this.timeoutCountdown;
-      });
+    idle.onTimeoutWarning.subscribe((countdown) => {
+      if (!this.showingModal && this.idleTime > 1) {
+        this.openModal();
+      }
+      this.timeoutCountdown = this.timeoutMax - countdown + 1;
+      this.modalRef.componentInstance.timeoutCountdown = this.timeoutCountdown;
+    });
 
-      keepalive.interval(15);
+    keepalive.interval(15);
 
-      keepalive.onPing.subscribe(() => this.lastPing = new Date());
+    keepalive.onPing.subscribe(() => this.lastPing = new Date());
 
-      this.authService.getUserLoggedIn().subscribe(userLoggedIn => {
-        if (userLoggedIn) {
-          idle.watch()
-          this.timedOut = false;
-        } else {
-          idle.stop();
-        }
-      })
+    this.authService.getUserLoggedIn().subscribe(userLoggedIn => {
+      if (userLoggedIn) {
+        idle.watch()
+        this.timedOut = false;
+      } else {
+        idle.stop();
+      }
+    })
+  }
 
-      // this.reset();
+  wrapperClasses(): string {
+    const classes: string[] = []
+    if (this.uiSettings) {
+      const layout = this.uiSettings.getSetting('layout')
+      if (layout === 'fixed') {
+        classes.push('fixed-width-layout')
+      } else if (layout === 'full') {
+        classes.push('full-width-layout')
+      }
 
+      const theme = this.uiSettings.getSetting('theme')
+      if (theme === 'light') {
+        classes.push('light-theme')
+      } else if (theme === 'dark') {
+        classes.push('dark-theme')
+      }
     }
-
-  isLogged: boolean;
+    return classes.join(' ')
+  }
 
   ngOnInit(): void {
     this.authService.autoLogin();
@@ -144,6 +165,7 @@ export class AppComponent implements OnInit {
       }
     });
     this.authService.checkStatus();
+    this.uiSettings = new UISettingsUtilityClass(this.storage)
   }
 
   private findCurrentStep(currentRoute) {
@@ -153,17 +175,17 @@ export class AppComponent implements OnInit {
   }
 
   checkLogin() {
-    const userData: { _token: string, _expires: string} = JSON.parse(localStorage.getItem('userData'));
-    if(!userData){
-        return;
+    const userData: { _token: string, _expires: string } = JSON.parse(localStorage.getItem('userData'));
+    if (!userData) {
+      return;
     }
-    if(new Date(userData._expires) <  new Date()){
+    if (new Date(userData._expires) < new Date()) {
       this.idle.stop();
       window.location.reload();
     }
   }
 
-  reset(){
+  reset() {
     this.idle.setTimeout(false);
     this.idle.watch();
     this.idle.setInterrupts(DEFAULT_INTERRUPTSOURCES);
@@ -174,26 +196,26 @@ export class AppComponent implements OnInit {
     this.closeModal();
   }
 
-  onLogOut(){
+  onLogOut() {
     this.authService.logOut();
     this.closeModal();
   }
 
-  storageInit(){
+  storageInit() {
     this.cookieService.checkDefaultCookies();
     this.uicService.checkStorage();
   }
 
-  onTimeout() : number {
+  onTimeout(): number {
     const uisData = JSON.parse(localStorage?.getItem('uis'));
     let timeoutidle = 1;
-    if(uisData !== null){
-      timeoutidle = Number(uisData.find(o => o.name === 'maxSessionLength').value*60*60); //Convert max session hours to seconds
+    if (uisData !== null) {
+      timeoutidle = Number(uisData.find(o => o.name === 'maxSessionLength').value * 60 * 60); //Convert max session hours to seconds
     }
     return timeoutidle;
   }
 
-  openModal(){
+  openModal() {
     if (this.isLogged) {
       this.showingModal = true;
 
@@ -202,7 +224,7 @@ export class AppComponent implements OnInit {
     }
   }
 
-  closeModal(){
+  closeModal() {
     this.showingModal = false;
     this.modalService.dismissAll();
     this.ngOnInit();
@@ -210,24 +232,24 @@ export class AppComponent implements OnInit {
 
   closeResult = '';
   open(content) {
-		this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title' }).result.then(
-			(result) => {
-				this.closeResult = `Closed with: ${result}`;
-			},
-			(reason) => {
-				this.closeResult = `Dismissed ${this.getDismissReason(reason)}`;
-			},
-		);
-	}
+    this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title' }).result.then(
+      (result) => {
+        this.closeResult = `Closed with: ${result}`;
+      },
+      (reason) => {
+        this.closeResult = `Dismissed ${this.getDismissReason(reason)}`;
+      },
+    );
+  }
 
-	private getDismissReason(reason: ModalDismissReasons | string): string {
-		if (reason === ModalDismissReasons.ESC) {
-			return 'by pressing ESC';
-		} else if (reason === ModalDismissReasons.BACKDROP_CLICK) {
-			return 'by clicking on a backdrop';
-		} else {
-			return `with: ${reason}`;
-		}
-	}
+  private getDismissReason(reason: ModalDismissReasons | string): string {
+    if (reason === ModalDismissReasons.ESC) {
+      return 'by pressing ESC';
+    } else if (reason === ModalDismissReasons.BACKDROP_CLICK) {
+      return 'by clicking on a backdrop';
+    } else {
+      return `with: ${reason}`;
+    }
+  }
 
 }

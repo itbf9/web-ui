@@ -1,4 +1,4 @@
-import { faServer, faTasks, faDatabase, faFileArchive, faCogs, faUserGroup,faPowerOff, faSun, faMoon, faUserCircle, faInbox, faQuestionCircle, faBell, faEye, faExchange, faArrowsH, faCog, faFileCode } from '@fortawesome/free-solid-svg-icons';
+import { faServer, faTasks, faDatabase, faFileArchive, faCogs, faUserGroup, faPowerOff, faSun, faMoon, faUserCircle, faInbox, faQuestionCircle, faBell, faEye, faExchange, faArrowsH, faCog, faFileCode } from '@fortawesome/free-solid-svg-icons';
 import { Component, OnDestroy, OnInit, Renderer2, ViewChild } from '@angular/core';
 import { environment } from './../../../environments/environment';
 import { NgbDropdown } from '@ng-bootstrap/ng-bootstrap';
@@ -19,37 +19,43 @@ export class HeaderComponent implements OnInit, OnDestroy {
   isMobile = false;
   private userSub: Subscription;
   public dropdown: NgbDropdown;
-  storedToggletheme:string = localStorage.getItem('toggledarkmode');
-  storedWidthScreentheme:string = localStorage.getItem('screenmode') || 'true';
+  storedToggletheme: string = localStorage.getItem('toggledarkmode');
+  storedWidthScreentheme: string = localStorage.getItem('screenmode') || 'true';
 
   // Icons User Menu
-  faFileArchive=faFileArchive;
-  faUserGroup=faUserGroup;
-  faDatabase=faDatabase;
-  faFileCode=faFileCode;
-  faServer=faServer;
-  faTasks=faTasks;
-  faCogs=faCogs;
+  faFileArchive = faFileArchive;
+  faUserGroup = faUserGroup;
+  faDatabase = faDatabase;
+  faFileCode = faFileCode;
+  faServer = faServer;
+  faTasks = faTasks;
+  faCogs = faCogs;
   // SubMenu User
-  faQuestionCircle=faQuestionCircle;
-  faUserCircle=faUserCircle;
-  faPowerOff=faPowerOff;
-  faExchange=faExchange;
-  faArrowsH=faArrowsH;
-  faInbox=faInbox;
-  faMoon=faMoon;
-  faBell=faBell;
-  faCog=faCog;
-  faSun=faSun;
-  faEye=faEye;
+  faQuestionCircle = faQuestionCircle;
+  faUserCircle = faUserCircle;
+  faPowerOff = faPowerOff;
+  faExchange = faExchange;
+  faArrowsH = faArrowsH;
+  faInbox = faInbox;
+  faMoon = faMoon;
+  faBell = faBell;
+  faCog = faCog;
+  faSun = faSun;
+  faEye = faEye;
 
-  public notifbell: {title: string, description: string, datetime: string}[] = [];
+  isFullWidthLayout = true; // Set this dynamically
+
+  toggleLayout() {
+    this.isFullWidthLayout = !this.isFullWidthLayout;
+  }
+
+  public notifbell: { title: string, description: string, datetime: string }[] = [];
 
   constructor(
     private authService: AuthService,
     private theme: ThemeService,
     private ren: Renderer2,
-    ) { }
+  ) { }
 
   collapsed = true;
   public toggleCollapsed(): void {
@@ -60,53 +66,53 @@ export class HeaderComponent implements OnInit, OnDestroy {
     return this.theme.current;
   }
 
-  public getUser(){
-    const userData: { _username: string} = JSON.parse(localStorage.getItem('userData'));
+  public getUser() {
+    const userData: { _username: string } = JSON.parse(localStorage.getItem('userData'));
     return userData._username;
   }
 
   ngOnInit(): void {
     this.userSub = this.authService.user
-        .subscribe(user => {
-          this.isAuthentificated = !!user;
-     });
+      .subscribe(user => {
+        this.isAuthentificated = !!user;
+      });
   }
 
   ngOnDestroy(): void {
     this.userSub.unsubscribe();
   }
 
-  onLogOut(){
+  onLogOut() {
     this.authService.logOut();
   }
 
-  switchMode(){
-    if(this.storedToggletheme === 'dark'){
-      localStorage.setItem('toggledarkmode','light')
+  switchMode() {
+    if (this.storedToggletheme === 'dark') {
+      localStorage.setItem('toggledarkmode', 'light')
       this.storedToggletheme = localStorage.getItem('toggledarkmode');
-    }else{
-      localStorage.setItem('toggledarkmode','dark')
+    } else {
+      localStorage.setItem('toggledarkmode', 'dark')
       this.storedToggletheme = localStorage.getItem('toggledarkmode');
     }
   }
 
-  switchScreen(){
-    if(this.storedWidthScreentheme === 'true'){
-      localStorage.setItem('screenmode','false')
+  switchScreen() {
+    if (this.storedWidthScreentheme === 'true') {
+      localStorage.setItem('screenmode', 'false')
       this.storedWidthScreentheme = localStorage.getItem('screenmode');
-    }else{
-      localStorage.setItem('screenmode','true')
+    } else {
+      localStorage.setItem('screenmode', 'true')
       this.storedWidthScreentheme = localStorage.getItem('screenmode');
     }
     location.reload();
   }
 
 
-  onMouseEnter(drop:NgbDropdown){
+  onMouseEnter(drop: NgbDropdown) {
     drop.open()
   }
 
-  onMouseLeave(drop:NgbDropdown){
+  onMouseLeave(drop: NgbDropdown) {
     drop.close()
   }
 

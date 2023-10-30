@@ -1,0 +1,64 @@
+@import '../base/colors';
+
+.pill {
+  display: inline-block;
+  align-items: center;
+  box-sizing: border-box;
+  border-radius: 8px;
+  padding: 4px 8px;
+  color: #fff;
+  font-size: 0.8em;
+}
+
+.pill-init {
+  background-color: $primary-300;
+}
+
+.pill-new {
+  background-color: $color-orange-dark;
+}
+
+.pill-running {
+  background-color: $color-green-dark;
+}
+
+.pill-paused {
+  background-color: $color-grey-metal;
+}
+
+.pill-exhausted {
+  background-color: $color-grey-metal;
+}
+
+.pill-cracked {
+  background-color: $color-blue;
+}
+
+.pill-aborted {
+  background-color: $color-red-dark;
+}
+
+.pill-quit {
+  background-color: $color-red-dark;
+}
+
+.pill-bypass {
+  background-color: $color-red-dark;
+}
+
+.pill-trimmed {
+  background-color: $color-red-dark;
+}
+
+.pill-aborting {
+  background-color: $color-red-dark;
+}
+
+.pill-active {
+  background-color: $accent-700;
+}
+
+.pill-inactive {
+  background-color: $accent-100;
+  color: rgba(black, 0.50);
+}
