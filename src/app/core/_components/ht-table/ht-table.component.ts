@@ -1,12 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ChangeDetectionStrategy, AfterViewInit, Component, EventEmitter, Input, OnDestroy, OnInit, Output, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { ChangeDetectionStrategy, AfterViewInit, Component, EventEmitter, Input, OnInit, Output, ViewChild, ChangeDetectorRef } from '@angular/core';
 import { MatSort } from '@angular/material/sort';
 import { MatPaginator, PageEvent } from '@angular/material/paginator';
-import { HTTableColumn } from './ht-table.models';
+import { DataType, HTTableColumn } from './ht-table.models';
 import { BaseDataSource } from '../../_datasources/base.datasource';
 import { MatDialog } from '@angular/material/dialog';
 import { ColumnSelectionDialogComponent } from '../column-selection-dialog/column-selection-dialog.component';
-import { MatMenuTrigger } from '@angular/material/menu';
+import { LocalStorageService } from '../../_services/storage/local-storage.service';
+import { UIConfig } from '../../_models/config-ui.model';
+import { UISettingsUtilityClass } from 'src/app/shared/utils/config';
+import { ActionMenuEvent } from '../../_models/action-menu.model';
 
 /**
  * The `HTTableComponent` is a custom table component that allows you to display tabular data with
@@ -16,6 +19,7 @@ import { MatMenuTrigger } from '@angular/material/menu';
  * Usage:
  * ```
  * <ht-table
+ *   [name]="tableName"
  *   [dataSource]="myDataSource"
  *   [isPageable]="true"
  *   [isSortable]="true"
@@ -25,11 +29,14 @@ import { MatMenuTrigger } from '@angular/material/menu';
  *   [hasRowAction]="true"
  *   [paginationSizes]="[5, 10, 15]"
  *   [defaultPageSize]="10"
- *   [filterFn]="customFilterFunction">
+ *   [filterFn]="customFilterFunction"
+ *   (rowActionClicked)="myRowActionHandler($event)"
+ *   (bulkActionClicked)="myBulkActionHandler($event)">
  * </ht-table>
  *
  * ```
  *
+ * - `[name]`: The internal name of the table used when storing user customizations.
  * - `[dataSource]`: An instance of a data source that extends `BaseDataSource`.
  * - `[isPageable]`: Set to `true` to enable pagination.
  * - `[isSortable]`: Set to `true` to enable column sorting.
@@ -40,6 +47,8 @@ import { MatMenuTrigger } from '@angular/material/menu';
  * - `[paginationSizes]`: An array of available page sizes.
  * - `[defaultPageSize]`: The default page size for pagination.
  * - `[filterFn]`: A custom filter function for advanced filtering.
+ * - `(rowActionClicked)`: Emits an `ActionMenuEvent` when a row action is triggered.
+ * - `(bulkActionClicked)`: Emits an `ActionMenuEvent` when a bulk action is triggered.
  *
  * @see `BaseDataSource` for creating a data source.
  * @see `HTTableColumn` for defining column configurations.
@@ -48,11 +57,9 @@ import { MatMenuTrigger } from '@angular/material/menu';
 @Component({
   selector: 'ht-table',
   templateUrl: './ht-table.component.html',
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HTTableComponent implements OnInit, AfterViewInit {
-
-  @ViewChild('menu') menu: MatMenuTrigger;
 
   /** The list of column names to be displayed in the table. */
   displayedColumns: string[];
@@ -65,6 +72,12 @@ export class HTTableComponent implements OnInit, AfterViewInit {
 
   /** Reference to MatSort for sorting support. */
   @ViewChild(MatSort, { static: true }) matSort: MatSort;
+
+  /** Name of the table, used when storing user customizations */
+  @Input() name: string
+
+  /** Data type displayed in the table, used to load relevant context menus */
+  @Input() dataType: DataType
 
   /** Function used to filter table data. */
   @Input() filterFn: (item: any, filterValue: string) => boolean
@@ -96,12 +109,22 @@ export class HTTableComponent implements OnInit, AfterViewInit {
   /** Default page size for pagination. */
   @Input() defaultPageSize = this.paginationSizes[1];
 
+  /** Event emitter for when the user triggers a row action */
+  @Output() rowActionClicked: EventEmitter<ActionMenuEvent<any>> = new EventEmitter<ActionMenuEvent<any>>();
 
-  constructor(public dialog: MatDialog, private cd: ChangeDetectorRef) { }
+  /** Event emitter for when the user triggers a bulk action */
+  @Output() bulkActionClicked: EventEmitter<ActionMenuEvent<any>> = new EventEmitter<ActionMenuEvent<any>>();
+
+  /** Fetches user customizations */
+  private uiSettings: UISettingsUtilityClass
+
+  constructor(public dialog: MatDialog, private cd: ChangeDetectorRef, private storage: LocalStorageService<UIConfig>) { }
 
   ngOnInit(): void {
+    this.uiSettings = new UISettingsUtilityClass(this.storage)
     this.columnNames = this.tableColumns.map((tableColumn: HTTableColumn) => tableColumn.name);
-    this.setDisplayedColumns(this.columnNames)
+    const displayedColumns = this.uiSettings.getTableSettings(this.name)
+    this.setDisplayedColumns(displayedColumns)
   }
 
   ngAfterViewInit(): void {
@@ -129,9 +152,18 @@ export class HTTableComponent implements OnInit, AfterViewInit {
     dialogRef.afterClosed().subscribe((selectedColumns: string[]) => {
       if (selectedColumns) {
         this.setDisplayedColumns(selectedColumns)
-        this.cd.detectChanges();
+        this.uiSettings.updateTableSettings(this.name, selectedColumns)
+        this.cd.detectChanges()
       }
     });
+  }
+
+  rowAction(event: ActionMenuEvent<any>): void {
+    this.rowActionClicked.emit(event)
+  }
+
+  bulkAction(event: ActionMenuEvent<any>): void {
+    this.bulkActionClicked.emit(event)
   }
 
   /**
@@ -151,7 +183,6 @@ export class HTTableComponent implements OnInit, AfterViewInit {
       // Add checkbox if enabled
       this.displayedColumns = ['select', ...this.displayedColumns];
     }
-
   }
 
   /**
