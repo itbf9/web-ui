@@ -1,8 +1,10 @@
-import { CookieService } from '../../../core/_services/shared/cookies.service';
-import { dateFormat } from '../../../core/_constants/settings.config';
 import { FormControl, FormGroup } from '@angular/forms';
-import Swal from 'sweetalert2/dist/sweetalert2.js';
 import { Component, OnInit } from '@angular/core';
+import { LocalStorageService } from 'src/app/core/_services/storage/local-storage.service';
+import { UIConfig } from 'src/app/core/_models/config-ui.model';
+import { Setting, dateFormats, layouts } from 'src/app/core/_constants/settings.config';
+import { UISettingsUtilityClass } from 'src/app/shared/utils/config';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-ui-settings',
@@ -10,54 +12,43 @@ import { Component, OnInit } from '@angular/core';
 })
 export class UiSettingsComponent implements OnInit {
 
-  dateFormat = dateFormat;
-  uiForm: FormGroup;
+  form!: FormGroup;
+  util: UISettingsUtilityClass
+  dateFormats: Setting[] = dateFormats
+  layouts: Setting[] = layouts
 
   constructor(
-    private cookieService: CookieService
-  ) { }
-
+    private service: LocalStorageService<UIConfig>,
+    private snackBar: MatSnackBar,
+  ) {
+    this.initForm();
+  }
 
   ngOnInit(): void {
+    this.util = new UISettingsUtilityClass(this.service)
+    this.updateForm();
+  }
 
-    this.uiForm = new FormGroup({
-      'localtimefmt': new FormControl(),
+  private initForm(): void {
+    this.form = new FormGroup({
+      'timefmt': new FormControl(''),
+      'layout': new FormControl('')
     });
-
-    this.initForm();
-
   }
 
-  private initForm() {
-
-    const localtimefmt = this.getCookieValue('localtimefmt');
-
-    this.uiForm = new FormGroup({
-      'localtimefmt': new FormControl(localtimefmt),
-    });
-
-  }
-
-  setCookieValue(name: string, value: string){
-    this.cookieService.setCookie(name, value, 365);
-    this.savedAlert();
-    this.ngOnInit();
-  }
-
-  getCookieValue(name: string){
-    return this.cookieService.getCookie(name);
-  }
-
-  savedAlert(){
-    Swal.fire({
-      position: 'top-end',
-      backdrop: false,
-      icon: 'success',
-      title: 'Saved',
-      showConfirmButton: false,
-      timer: 1500
+  private updateForm(): void {
+    this.form.patchValue({
+      'timefmt': this.util.uiConfig.timefmt,
+      'layout': this.util.uiConfig.layout,
     })
   }
 
+  onSubmit(): void {
+    const changedValues = this.util.updateSettings(this.form.value)
+    const message = changedValues > 0
+      ? `Successfully updated ${changedValues} settings!`
+      : 'No changes were saved'
 
+    this.snackBar.open(message, 'Close');
+  }
 }
