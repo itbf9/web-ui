@@ -47,7 +47,7 @@ export class LocalStorageService<T> extends BaseStorageService<T> {
    */
   setItem(key: string, value: T, expiresInMs: number): void {
     const storedValue: StorageWrapper<T> = {
-      expires: new Date(Date.now() + expiresInMs).getTime(),
+      expires: expiresInMs ? new Date(Date.now() + expiresInMs).getTime() : 0,
       value: value
     }
 
