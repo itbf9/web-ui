@@ -25,3 +25,25 @@ export type CreateHashlist = BaseHashlist
 //     crackedCount: number;
 //     notes: string;
 // }
+
+export interface Hashlist {
+  _id: number,
+  _self: string,
+  hashlistId?: number
+  accessGroupId: number,
+  brainFeatures: string,
+  format: string,
+  name: string,
+  hashTypeId: number,
+  isHexSalt: boolean,
+  isSecret: boolean,
+  isSalted: boolean,
+  separator: string,
+  useBrain: boolean,
+  hashCount: number,
+  cracked: number,
+  notes: string,
+  isArchived: boolean,
+  sourceType: string,
+  sourceData: string
+}

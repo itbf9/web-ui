@@ -1,5 +1,9 @@
 // import { Hashlist } from "./hashlist";
 
+import { Agent } from "./agents";
+import { CrackerBinary, CrackerBinaryType } from "./cracker-binary";
+import { Hashlist } from "./hashlist";
+
 export interface NormalTask {
   id: number;
   name: string;
@@ -36,5 +40,12 @@ export interface Task {
   taskId: number
   taskName: string
   taskWrapperId: number
+  taskWrapperName?: string
   useNewBench: boolean
+  assignedAgents?: Agent[]
+  crackerBinary?: CrackerBinary
+  crackerBinaryType?: CrackerBinaryType
+  hashlist?: Hashlist[]
+  taskType?: number
 }
+

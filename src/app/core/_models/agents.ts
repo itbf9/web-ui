@@ -1,5 +1,7 @@
 import { AccessGroup } from "./access-group"
 import { User } from "./user.model"
+import { Task } from './task'
+import { Chunk } from "./chunk"
 
 export interface AgentStats {
   _id: number
@@ -12,6 +14,8 @@ export interface AgentStats {
 }
 
 export interface Agent {
+  _id?: number
+  _self?: string
   agentId: number
   agentName: string
   uid: string
@@ -31,8 +35,9 @@ export interface Agent {
   clientSignature: string
   agentstats?: AgentStats[]
   accessGroups?: AccessGroup[]
-  _id?: number
-  _self?: string
+  taskId?: number
+  task?: Task
+  chunk?: Chunk
 }
 
 

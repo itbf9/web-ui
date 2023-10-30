@@ -36,3 +36,10 @@ export interface Chunk {
   cracked: number
   speed: number
 }
+
+export interface ChunkData {
+  dispatched: number
+  searched: number
+  cracked: number
+  speed: number
+}
