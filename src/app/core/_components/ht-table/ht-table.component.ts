@@ -115,6 +115,9 @@ export class HTTableComponent implements OnInit, AfterViewInit {
   /** Event emitter for when the user triggers a bulk action */
   @Output() bulkActionClicked: EventEmitter<ActionMenuEvent<any>> = new EventEmitter<ActionMenuEvent<any>>();
 
+  /** Event emitter for when the user triggers an export action */
+  @Output() exportActionClicked: EventEmitter<ActionMenuEvent<any>> = new EventEmitter<ActionMenuEvent<any>>();
+
   /** Fetches user customizations */
   private uiSettings: UISettingsUtilityClass
 
@@ -165,6 +168,11 @@ export class HTTableComponent implements OnInit, AfterViewInit {
   bulkAction(event: ActionMenuEvent<any>): void {
     this.bulkActionClicked.emit(event)
   }
+
+  exportAction(event: ActionMenuEvent<any>): void {
+    this.exportActionClicked.emit(event)
+  }
+
 
   /**
    * Sets the displayed columns based on user selection.

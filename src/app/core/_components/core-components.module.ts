@@ -35,6 +35,7 @@ import { BaseMenuComponent } from './menus/base-menu/base-menu.component';
 import { TableDialogComponent } from './table-dialog/table-dialog.component';
 import { MAT_SNACK_BAR_DEFAULT_OPTIONS, MatSnackBarModule } from '@angular/material/snack-bar';
 import { BaseTableComponent } from './base-table/base-table.component';
+import { ExportMenuComponent } from './menus/export-menu/export-menu.component';
 
 
 
@@ -48,6 +49,7 @@ import { BaseTableComponent } from './base-table/base-table.component';
     HTTableComponent,
     BaseMenuComponent,
     ActionMenuComponent,
+    ExportMenuComponent,
     RowActionMenuComponent,
     BulkActionMenuComponent,
     ColumnSelectionDialogComponent,
@@ -89,6 +91,7 @@ import { BaseTableComponent } from './base-table/base-table.component';
     ColumnSelectionDialogComponent,
     BaseMenuComponent,
     ActionMenuComponent,
+    ExportMenuComponent,
     RowActionMenuComponent,
     BulkActionMenuComponent,
   ],
