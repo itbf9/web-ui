@@ -281,10 +281,15 @@ export class AgentsTableComponent extends BaseTableComponent implements OnInit, 
   exportActionClicked(event: ActionMenuEvent<Agent[]>): void {
     switch (event.menuItem.action) {
       case ExportMenuAction.EXCEL:
-        this.exportService.toExcel<Agent>('agents', this.tableColumns, event.data)
+        this.exportService.toExcel<Agent>('hashtopolis-agents', this.tableColumns, event.data)
         break;
       case ExportMenuAction.CSV:
-        this.exportService.toCsv<Agent>('agents', this.tableColumns, event.data)
+        this.exportService.toCsv<Agent>('hashtopolis-agents', this.tableColumns, event.data)
+        break;
+      case ExportMenuAction.COPY:
+        this.exportService.toClipboard<Agent>(this.tableColumns, event.data).then(() => {
+          this.snackBar.open('The selected rows are copied to the clipboard', 'Close')
+        })
         break;
     }
   }

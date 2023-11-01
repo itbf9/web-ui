@@ -4,12 +4,13 @@ import * as Papa from 'papaparse';
 import { HTTableColumn } from '../../_components/ht-table/ht-table.models';
 import { ExportUtil } from './export.util';
 import { ExcelColumn } from './export.model';
+import { Clipboard } from '@angular/cdk/clipboard';
 
 @Injectable({
   providedIn: 'root',
 })
 export class ExportService {
-  constructor(private exportUtil: ExportUtil) { }
+  constructor(private exportUtil: ExportUtil, private clipboard: Clipboard) { }
 
   async toExcel<T>(fileName: string, tableColumns: HTTableColumn[], rawData: T[]): Promise<void> {
     try {
@@ -42,6 +43,19 @@ export class ExportService {
       }
     } catch (error) {
       console.error('Error during CSV export:', error);
+    }
+  }
+
+  async toClipboard<T>(tableColumns: HTTableColumn[], rawData: T[]): Promise<void> {
+    try {
+      const columns: string[] = this.exportUtil.toCsvColumns(tableColumns);
+      const data = await this.exportUtil.toCsvRows(tableColumns, rawData);
+
+      const textToCopy = [columns, ...data].map((row: string[]) => row.join('\t')).join('\n');
+
+      this.clipboard.copy(textToCopy);
+    } catch (error) {
+      console.error('Error during Clipboard export:', error);
     }
   }
 
