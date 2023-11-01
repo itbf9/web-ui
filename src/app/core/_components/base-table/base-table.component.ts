@@ -9,6 +9,7 @@ import { LocalStorageService } from '../../_services/storage/local-storage.servi
 import { UIConfig, uiConfigDefault } from '../../_models/config-ui.model';
 import { UIConfigService } from '../../_services/shared/storage.service';
 import { Subscription } from 'rxjs';
+import { ExportService } from '../../_services/export/export.service';
 
 @Component({
   selector: 'base-table',
@@ -28,6 +29,7 @@ export class BaseTableComponent {
     protected sanitizer: DomSanitizer,
     protected snackBar: MatSnackBar,
     protected uiService: UIConfigService,
+    protected exportService: ExportService,
     public dialog: MatDialog,
   ) {
     this.uiSettings = new UISettingsUtilityClass(settingsService)

@@ -15,6 +15,7 @@ import { DialogData } from "../table-dialog/table-dialog.model";
 import { SERV } from "../../_services/main.config";
 import { catchError, forkJoin } from "rxjs";
 import { BaseTableComponent } from "../base-table/base-table.component";
+import { ExportMenuAction } from "../menus/export-menu/export-menu.constants";
 
 
 @Component({
@@ -57,18 +58,21 @@ export class AgentsTableComponent extends BaseTableComponent implements OnInit, 
         name: AgentsTableColumnLabel.ID,
         dataKey: '_id',
         isSortable: true,
+        export: async (agent: Agent) => agent._id + ''
       },
       {
         name: AgentsTableColumnLabel.STATUS,
         dataKey: 'status',
         render: (agent: Agent) => this.renderStatus(agent),
         isSortable: true,
+        export: async (agent: Agent) => agent.isActive ? 'Active' : 'Inactive'
       },
       {
         name: AgentsTableColumnLabel.NAME,
         dataKey: 'agentName',
         routerLink: (agent: Agent) => ['/agents', 'show-agents', agent._id, 'edit'],
         isSortable: true,
+        export: async (agent: Agent) => agent.agentName
       },
       {
         name: AgentsTableColumnLabel.USER,
@@ -76,47 +80,55 @@ export class AgentsTableComponent extends BaseTableComponent implements OnInit, 
         render: (agent: Agent) => this.renderOwner(agent),
         routerLink: (agent: Agent) => agent.userId ? ['/users', agent.userId, 'edit'] : [],
         isSortable: true,
+        export: async (agent: Agent) => agent.user ? agent.user.name : ''
       },
       {
         name: AgentsTableColumnLabel.CLIENT,
         dataKey: 'clientSignature',
         render: (agent: Agent) => this.renderClient(agent),
         isSortable: true,
+        export: async (agent: Agent) => agent.clientSignature ? agent.clientSignature : ''
       },
       {
         name: AgentsTableColumnLabel.CURRENT_TASK,
         dataKey: 'taskId',
         render: (agent: Agent) => this.renderCurrentTask(agent),
         isSortable: true,
+        export: async (agent: Agent) => agent.task ? agent.task.taskName : ''
       },
       {
         name: AgentsTableColumnLabel.TASK_SPEED,
         dataKey: 'taskId',
         async: (agent: Agent) => this.renderCurrentSpeed(agent),
         isSortable: false,
+        export: async (agent: Agent) => await this.getSpeed(agent) + ''
       },
       {
         name: AgentsTableColumnLabel.CURRENT_CHUNK,
-        dataKey: 'taskId',
+        dataKey: 'chunkId',
         render: (agent: Agent) => this.renderCurrentChunk(agent),
         isSortable: true,
+        export: async (agent: Agent) => agent.chunk ? agent.chunk._id + '' : ''
       },
       {
         name: AgentsTableColumnLabel.GPUS_CPUS,
         dataKey: 'devices',
         isSortable: true,
+        export: async (agent: Agent) => agent.devices
       },
       {
         name: AgentsTableColumnLabel.LAST_ACTIVITY,
         dataKey: 'lastTime',
         render: (agent: Agent) => this.renderLastActivity(agent),
         isSortable: true,
+        export: async (agent: Agent) => formatDate(agent.lastTime, this.dateFormat)
       },
       {
         name: AgentsTableColumnLabel.ACCESS_GROUP,
         dataKey: 'accessGroupId',
         render: (agent: Agent) => this.renderAccessGroup(agent),
         isSortable: true,
+        export: async (agent: Agent) => agent.accessGroups.map((item) => item.groupName).join(', ')
       }
     ]
 
@@ -182,13 +194,22 @@ export class AgentsTableComponent extends BaseTableComponent implements OnInit, 
   @Cacheable(['_id', 'taskId'])
   async renderCurrentSpeed(agent: Agent): Promise<SafeHtml> {
     let html = '-'
+    const speed = await this.getSpeed(agent)
+    if (speed) {
+      html = `${speed} H/s`
+    }
+    return this.sanitize(html)
+  }
+
+  private async getSpeed(agent: Agent): Promise<number> {
     if (!(agent._id in this.chunkData)) {
       this.chunkData[agent._id] = await this.dataSource.getChunkData(agent._id);
     }
     if (this.chunkData[agent._id].speed) {
-      html = `${this.chunkData[agent._id].speed} H/s`
+      return this.chunkData[agent._id].speed
     }
-    return this.sanitize(html)
+
+    return 0
   }
 
   @Cacheable(['_id', 'chunk'])
@@ -257,6 +278,16 @@ export class AgentsTableComponent extends BaseTableComponent implements OnInit, 
 
   // --- Action functions ---
 
+  exportActionClicked(event: ActionMenuEvent<Agent[]>): void {
+    switch (event.menuItem.action) {
+      case ExportMenuAction.EXCEL:
+        this.exportService.toExcel<Agent>('agents', this.tableColumns, event.data)
+        break;
+      case ExportMenuAction.CSV:
+        this.exportService.toCsv<Agent>('agents', this.tableColumns, event.data)
+        break;
+    }
+  }
 
   rowActionClicked(event: ActionMenuEvent<Agent>): void {
     switch (event.menuItem.action) {
